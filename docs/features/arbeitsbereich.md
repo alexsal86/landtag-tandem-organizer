@@ -6,10 +6,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **16** in **8** Unterbereichen
-- implementiert: **15**, teilweise: **1**, deaktiviert: **0**, potenziell verwaist: **0**
-- ohne zugeordneten Test: **7**
-- ohne Dokumentationsverweis: **11**
+- Funktionen: **17** in **8** Unterbereichen
+- implementiert: **16**, teilweise: **1**, deaktiviert: **0**, potenziell verwaist: **0**
+- ohne zugeordneten Test: **5**
+- ohne Dokumentationsverweis: **12**
 
 ## Funktionen
 
@@ -20,8 +20,9 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `mywork.dashboard.today-priorities` Heute zuerst | Meine Arbeit | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `mywork.tabs` Meine Arbeit – Bereichsnavigation und Einstellungen | Meine Arbeit | fachlich | implementiert | UI | kein Test |
 | `mywork.dashboard` Meine Arbeit – Dashboard | Meine Arbeit | fachlich | implementiert | rollenabhängig | Selbsttest |
-| `mywork.quick-access` Schnellzugriff und zuletzt besuchte Seiten | Meine Arbeit | fachlich | implementiert | UI | kein Test |
+| `mywork.quick-access` Schnellzugriff und zuletzt besuchte Seiten | Meine Arbeit | fachlich | implementiert | UI | Integrationstest |
 | `mobile.app` Mobile App (Expo) | Mobile | fachlich | teilweise | ohne Einbindung | kein Test |
+| `mywork.personal-sidebar` Persönliche Sidebar und Focus Mode | Navigation | technisch | implementiert | UI | Integrationstest |
 | `mywork.navigation-previews` Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte | Navigation | fachlich | implementiert | UI | kein Test |
 | `profile.edit` Eigenes Profil bearbeiten | Profil | fachlich | implementiert | UI | kein Test |
 | `quicknotes.checklists` Checklisten in Schnellnotizen | Schnellnotizen | fachlich | implementiert | UI | Unit-Test |
@@ -29,7 +30,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `quicknotes.drag-sort` Notizen per Drag-and-drop sortieren | Schnellnotizen | fachlich | implementiert | UI | Unit-Test |
 | `quicknotes.offline` Offline-Synchronisation für Schnellnotizen | Schnellnotizen | fachlich | implementiert | UI | Unit-Test |
 | `quicknotes.manage` Schnellnotizen anlegen, bearbeiten und verlinken | Schnellnotizen | fachlich | implementiert | UI | Selbsttest |
-| `search.global` Globale Suche und Befehlspalette | Suche | fachlich | implementiert | UI | kein Test |
+| `search.global` Globale Suche und Befehlspalette | Suche | fachlich | implementiert | UI | Integrationstest |
 | `platform.auth` Anmeldung und Sitzung | Zugang | sicherheit | implementiert | UI | kein Test |
 
 ## Unterbereiche
@@ -49,7 +50,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`appointment_contacts`, `appointment_preparations`, `appointments`, `case_file_contacts`, `case_files`, `contacts`, `dashboard_layouts`, `external_events`, `message_confirmations`, `notification_navigation_mapping`, `notification_types`, `notifications`, `profiles`, `quick_note_global_shares`, `quick_note_shares`, `quick_note_versions`, `quick_note_write_receipts`, `quick_notes`, `search_analytics`, `task_snoozes`, `tasks`, `user_mywork_settings`, `user_navigation_visits`, `user_notification_settings`, `user_planning_preferences`, `user_preferences`, `user_sessions`, `user_tenant_memberships`, `widget_configurations`
+`appointment_contacts`, `appointment_preparations`, `appointments`, `case_file_contacts`, `case_files`, `case_items`, `contacts`, `dashboard_layouts`, `external_events`, `message_confirmations`, `notification_navigation_mapping`, `notification_types`, `notifications`, `profiles`, `quick_note_global_shares`, `quick_note_shares`, `quick_note_versions`, `quick_note_write_receipts`, `quick_notes`, `search_analytics`, `task_assignees`, `task_snoozes`, `tasks`, `user_mywork_settings`, `user_navigation_visits`, `user_notification_settings`, `user_planning_preferences`, `user_preferences`, `user_sessions`, `user_tenant_memberships`, `widget_configurations`
 
 ## Selbsttest-Szenarien
 
@@ -336,25 +337,25 @@ Schaltet zwischen Dashboard, Aufgaben, Vorgängen, Entscheidungen, Jour fixe, Pl
 - Keine.
 
 ### `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
-Merkt sich zuletzt besuchte Bereiche und stellt konfigurierbare Schnellzugriffe in der Navigation bereit.
+Zeigt persönliche Favoriten und optional zuletzt besuchte Ziele vor der Workspace-Navigation. Seiten und Fachobjekte lassen sich anheften und entfernen. Bestehende Favoriten behalten Reihenfolge und Ziel.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Testabdeckung:** Integrationstest
+- **Letztes Testergebnis:** bestanden (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
-- **Frontend-Komponenten:** `src/components/shared/QuickAccessMenuItem.tsx`
+- **Frontend-Komponenten:** `src/components/navigation/appNavigation/QuickAccessSection.tsx`, `src/components/shared/QuickAccessMenuItem.tsx`
 - **Services:** —
-- **Hooks:** `src/hooks/useQuickAccessPages.ts`, `src/hooks/useRecentlyVisited.ts`, `src/hooks/useNavCollapse.ts`, `src/hooks/useNavWidth.ts`
+- **Hooks:** `src/hooks/useQuickAccessPages.ts`, `src/hooks/useRecentlyVisited.ts`, `src/components/navigation/appNavigation/useSavedNavigation.ts`
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
 - **Tabellen:** `user_navigation_visits`, `user_preferences`
 - **Abhängigkeiten:** —
 - **Selbsttests:** —
 - **Unit-Tests:** —
-- **Integrationstests:** —
+- **Integrationstests:** `src/components/navigation/AppNavigation.test.tsx`
 - **Browser-Tests:** —
 - **Dokumentation:** —
 
@@ -363,17 +364,55 @@ Merkt sich zuletzt besuchte Bereiche und stellt konfigurierbare Schnellzugriffe 
 - src/hooks/useQuickAccessPages.ts
 - src/hooks/useRecentlyVisited.ts
 - src/components/shared/QuickAccessMenuItem.tsx
+- src/components/navigation/appNavigation/useSavedNavigation.ts
 
 **Bekannte Einschränkungen**
 
+- Bestehende Browser-Favoriten haben teilweise keine Konto- oder Mandantenmetadaten. Gespeicherte Fachobjekte sind im aktuellen Mandanten nur sichtbar, wenn sie dort gelesen werden dürfen.
+
+**Offene Prüfpunkte**
+
 - Keine.
+
+### `mywork.personal-sidebar` — Persönliche Sidebar und Focus Mode
+Bündelt persönliche Aufgaben und fällige Vorgänge, die Unterschriftenmappe und den nächsten Termin unter Mein Tag. Unterstützt die normale, kompakte und überlagernde Sidebar mit gespeicherter Breite und Moduswahl.
+
+- **Kategorie:** technisch
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Integrationstest
+- **Letztes Testergebnis:** bestanden (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/components/navigation/appNavigation/FocusSummary.tsx`, `src/components/navigation/appNavigation/SidebarFooter.tsx`, `src/components/navigation/HelpDialog.tsx`, `src/components/settings/SidebarPreferencesCard.tsx`
+- **Services:** —
+- **Hooks:** `src/components/navigation/appNavigation/useFocusSummary.ts`, `src/hooks/useNavWidth.ts`, `src/hooks/useUserPreference.ts`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** —
+- **Tabellen:** `user_preferences`, `tasks`, `task_assignees`, `case_items`, `appointments`, `external_events`
+- **Abhängigkeiten:** —
+- **Selbsttests:** —
+- **Unit-Tests:** `src/components/navigation/appNavigation/useFocusSummary.test.ts`
+- **Integrationstests:** `src/components/navigation/AppNavigation.test.tsx`
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/components/navigation/AppNavigation.tsx
+- src/components/navigation/navigationConfig.ts
+- src/components/navigation/appNavigation/DesktopSidebar.tsx
+
+**Bekannte Einschränkungen**
+
+- Die Freigabeanzeige basiert auf der Unterschriftenmappe und ist in der Abgeordnetenansicht für tatsächlich Abgeordnete verfügbar. Matrix-Ungelesenstände zählen getrennt.
 
 **Offene Prüfpunkte**
 
 - Keine.
 
 ### `mywork.navigation-previews` — Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte
-Zeigt Vorschauen mit dem nächsten Termin samt Briefingstatus, einer offenen Aufgabe mit Frist und Zuständigkeit, einer kürzlich aktualisierten Fallakte, einem ungelesenen Chat oder einem Kontakt mit Bezug zum nächsten Termin oder einer Fallakte. Verlinkt den jeweiligen Eintrag und die Unterbereiche.
+Öffnet kontextbezogene Vorschauen für Termine und Briefings, Aufgaben, Fallakten, Matrix-Chats und Kontakte. Die Einträge verlinken direkt auf die vorhandenen Fachziele.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -405,10 +444,9 @@ Zeigt Vorschauen mit dem nächsten Termin samt Briefingstatus, einer offenen Auf
 
 **Bekannte Einschränkungen**
 
-- In der Desktop-Navigation per Maus oder Pfeil nach rechts verfügbar. Die Terminvorschau blickt fünf Tage voraus und die Aktenvorschau berücksichtigt eigene oder zugewiesene Fallakten.
-- Chat-Hervorhebungen stammen von Matrix. Die Vorschau zeigt Raumnamen und Zähler. Der zuletzt geöffnete Chat wird für die aktuelle Sitzung gemerkt.
-- Ohne Kontakt am nächsten Termin oder in der jüngsten eigenen oder zugewiesenen Fallakte wird ein eigener Favorit angezeigt.
-- Kein Selbsttest: die Vorschauen sind ein reiner Oberflächenpfad der Desktop-Navigation. Geprüft werden nur die zugrunde liegenden Datensätze in den Szenarien der jeweiligen Bereiche.
+- Die Vorschauen stehen über die Zeilenaktionen auf Desktop und Touch zur Verfügung. Die Liste im Kalender-Popover blickt fünf Tage voraus. Der nächste Termin in Mein Tag kann auch danach liegen.
+- Matrix-Hervorhebungen priorisieren den Chat für die Vorschau. Ohne ungelesenen Raum wird der zuletzt geöffnete Chat der Sitzung angezeigt.
+- Die Fallakten-Vorschau berücksichtigt eigene oder zugewiesene Akten. Ohne passenden Kontakt wird ein persönlicher Kontaktfavorit verwendet.
 
 **Offene Prüfpunkte**
 
@@ -491,17 +529,17 @@ Steuert Anzeige- und Versandpräferenzen je Benachrichtigungstyp und verwaltet z
 - Keine.
 
 ### `search.global` — Globale Suche und Befehlspalette
-Durchsucht Kontakte, Aufgaben, Dokumente und weitere Objekte über eine Befehlspalette, öffnet Treffer über eine zentrale Ziel-Registry und protokolliert Suchanfragen für die Auswertung.
+Findet erlaubte Navigationsziele und vorhandene Erstellungsaktionen über deutsche Begriffe und Teilwörter. Die Inhaltssuche behält Filter, Ziel-Registry und Suchauswertung.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
 - **Einbindung:** UI
-- **Testabdeckung:** kein Test
-- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Testabdeckung:** Integrationstest
+- **Letztes Testergebnis:** bestanden (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/search/GlobalSearchCommand.tsx`, `src/components/search/GlobalQuickNoteDialog.tsx`
-- **Services:** `src/components/search/postgrestSearch.ts`, `src/lib/appTargets.ts`
+- **Services:** `src/components/search/postgrestSearch.ts`, `src/lib/appTargets.ts`, `src/components/navigation/navigationConfig.ts`
 - **Hooks:** —
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
@@ -509,7 +547,7 @@ Durchsucht Kontakte, Aufgaben, Dokumente und weitere Objekte über eine Befehlsp
 - **Abhängigkeiten:** —
 - **Selbsttests:** —
 - **Unit-Tests:** —
-- **Integrationstests:** —
+- **Integrationstests:** `src/components/search/GlobalSearchCommand.test.tsx`, `src/components/layout/GlobalCreateMenu.test.tsx`
 - **Browser-Tests:** —
 - **Dokumentation:** —
 
@@ -518,6 +556,7 @@ Durchsucht Kontakte, Aufgaben, Dokumente und weitere Objekte über eine Befehlsp
 - src/components/search/GlobalSearchCommand.tsx
 - src/components/search/postgrestSearch.ts
 - src/lib/appTargets.ts
+- src/components/layout/globalCreateActions.ts
 
 **Bekannte Einschränkungen**
 

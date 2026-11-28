@@ -16,12 +16,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - Prüfkandidat ohne Funktionszuordnung (rpc): insert_sample_contacts
 - Prüfkandidat ohne Funktionszuordnung (rpc): storage_folder_uuid
 
-## Funktionen ohne zugeordneten Test (88)
+## Funktionen ohne zugeordneten Test (86)
 
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
-- `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
 - `mywork.navigation-previews` — Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte
-- `search.global` — Globale Suche und Befehlspalette
 - `platform.auth` — Anmeldung und Sitzung
 - `profile.edit` — Eigenes Profil bearbeiten
 - `mobile.app` — Mobile App (Expo)
@@ -107,11 +105,12 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `knowledge.collaboration` — Kollaborative Wissensbearbeitung
 - `knowledge.management` — Wissensverwaltung
 
-## Funktionen ohne Dokumentationsverweis (177)
+## Funktionen ohne Dokumentationsverweis (178)
 
 - `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
+- `mywork.personal-sidebar` — Persönliche Sidebar und Focus Mode
 - `mywork.navigation-previews` — Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte
 - `notifications.preferences` — Benachrichtigungseinstellungen und Stummschaltung
 - `search.global` — Globale Suche und Befehlspalette
@@ -300,7 +299,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (121)
+## Funktionen mit Einschränkungen oder offenen Punkten (123)
 
 ### `mywork.dashboard`
 
@@ -314,12 +313,19 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Die Tab-Auswahl ist eine reine UI-Präferenz und hat keine eigene Geschäftsregel.
 
+### `mywork.quick-access`
+
+- Bestehende Browser-Favoriten haben teilweise keine Konto- oder Mandantenmetadaten. Gespeicherte Fachobjekte sind im aktuellen Mandanten nur sichtbar, wenn sie dort gelesen werden dürfen.
+
+### `mywork.personal-sidebar`
+
+- Die Freigabeanzeige basiert auf der Unterschriftenmappe und ist in der Abgeordnetenansicht für tatsächlich Abgeordnete verfügbar. Matrix-Ungelesenstände zählen getrennt.
+
 ### `mywork.navigation-previews`
 
-- In der Desktop-Navigation per Maus oder Pfeil nach rechts verfügbar. Die Terminvorschau blickt fünf Tage voraus und die Aktenvorschau berücksichtigt eigene oder zugewiesene Fallakten.
-- Chat-Hervorhebungen stammen von Matrix. Die Vorschau zeigt Raumnamen und Zähler. Der zuletzt geöffnete Chat wird für die aktuelle Sitzung gemerkt.
-- Ohne Kontakt am nächsten Termin oder in der jüngsten eigenen oder zugewiesenen Fallakte wird ein eigener Favorit angezeigt.
-- Kein Selbsttest: die Vorschauen sind ein reiner Oberflächenpfad der Desktop-Navigation. Geprüft werden nur die zugrunde liegenden Datensätze in den Szenarien der jeweiligen Bereiche.
+- Die Vorschauen stehen über die Zeilenaktionen auf Desktop und Touch zur Verfügung. Die Liste im Kalender-Popover blickt fünf Tage voraus. Der nächste Termin in Mein Tag kann auch danach liegen.
+- Matrix-Hervorhebungen priorisieren den Chat für die Vorschau. Ohne ungelesenen Raum wird der zuletzt geöffnete Chat der Sitzung angezeigt.
+- Die Fallakten-Vorschau berücksichtigt eigene oder zugewiesene Akten. Ohne passenden Kontakt wird ein persönlicher Kontaktfavorit verwendet.
 
 ### `notifications.inbox`
 

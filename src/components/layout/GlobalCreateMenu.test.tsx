@@ -9,6 +9,7 @@ vi.mock("@/hooks/useTenant", () => ({
   useTenant: () => ({ currentTenant: { id: "tenant-1", name: "Büro" } }),
 }));
 
+vi.mock("@/hooks/useTenantFeatureFlag", () => ({ useTenantModuleGate: () => () => true }));
 vi.mock("@/hooks/useActionPermission", () => ({
   useActionPermission: () => ({ allowed: true }),
 }));

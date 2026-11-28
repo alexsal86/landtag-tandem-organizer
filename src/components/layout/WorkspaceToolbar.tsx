@@ -18,7 +18,7 @@ export function WorkspaceToolbar({ children, actions, className }: {
           variant="outline"
           aria-label="Global suchen"
           aria-keyshortcuts="Control+K Meta+K"
-          className="size-11 rounded-full border-border/80 bg-card/90 p-0 text-muted-foreground shadow-sm hover:border-[#2e6018] hover:bg-card/90 hover:text-muted-foreground lg:w-auto lg:px-4"
+          className="workspace-search-trigger size-11 rounded-full border-border/80 bg-card/90 p-0 text-muted-foreground shadow-sm hover:border-[#2e6018] hover:bg-card/90 hover:text-muted-foreground lg:w-auto lg:px-4"
           onClick={() => window.dispatchEvent(new CustomEvent("openGlobalSearch"))}
         >
           <Search aria-hidden="true" />

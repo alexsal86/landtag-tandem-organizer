@@ -1,3 +1,5 @@
+import { useQuery } from "@tanstack/react-query";
+import { STALE_TIME } from "@/lib/query-cache";
 import { supabase } from "@/integrations/supabase/client";
 
 export const folderTypes = [
@@ -39,6 +41,21 @@ export function folderDate(value: string, now = new Date()) {
 }
 
 const clock = new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit" });
+
+export function signatureFolderKey(tenantId?: string, userId?: string) {
+  return ["signature-folder", tenantId, userId] as const;
+}
+
+export function useSignatureFolderQuery(tenantId?: string, userId?: string, enabled = true) {
+  return useQuery({
+    queryKey: signatureFolderKey(tenantId, userId),
+    queryFn: () => loadSignatureFolder(tenantId!, userId!),
+    enabled: enabled && !!tenantId && !!userId,
+    staleTime: STALE_TIME.LIST_WITH_REALTIME,
+    refetchInterval: STALE_TIME.LIST_WITH_REALTIME,
+    refetchOnWindowFocus: true,
+  });
+}
 
 export async function loadSignatureFolder(tenantId: string, userId: string): Promise<FolderEntry[]> {
   const [press, social, protocols, decisions, profiles] = await Promise.all([

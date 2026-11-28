@@ -1,1256 +1,261 @@
-import { GlobalCreateMenu } from "@/components/layout/GlobalCreateMenu";
-import { SunflowerThemeToggle } from "@/components/ui/sunflower-theme-toggle";
-import { useState, useEffect, useCallback, useMemo, type ElementType, type ReactElement } from "react";
-import { useUserPreference } from "@/hooks/useUserPreference";
-import { SHOW_RECENT_PREF_KEY } from "@/components/settings/SidebarPreferencesCard";
-import { NavGroupPreview } from "./appNavigation/NavGroupPreview";
-import { asBriefingStatus, BRIEFING_STATUS_LABELS } from "@/features/appointments/briefing";
-import { ballAssigneeLabel } from "@/features/tasks/stafette";
-import { useNavPanelData } from "./appNavigation/useNavPanelData";
-import { NavDossierCapture } from "@/components/search/NavDossierCapture";
-import { buildCaseItemHref, buildDocumentHref } from "@/lib/appTargets";
-import { Link, useNavigate } from "react-router-dom";
-import { debugConsole } from '@/utils/debugConsole';
-import { 
-  Home, 
-  Shield,
-  HelpCircle,
-  Briefcase,
-  ChevronRight,
-  ChevronDown,
-  ChevronLeft,
-  Plus,
-  X,
-  Star,
-  Check,
-  Calendar,
-  Upload,
-  Settings,
-  LogOut,
-  User,
-  FileText,
-  CalendarPlus,
-  ArrowLeft,
-} from "lucide-react";
-import { useMatrixUnread } from "@/contexts/MatrixUnreadContext";
-import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
-import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
-import { Switch } from "@/components/ui/switch";
-import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
-import { useAppSettings } from "@/hooks/useAppSettings";
-import { useFavicon } from "@/hooks/useFavicon";
-import { useQuickAccessPages, QuickAccessPage } from "@/hooks/useQuickAccessPages";
-import { useRecentlyVisited } from "@/hooks/useRecentlyVisited";
-import { useAuth } from "@/hooks/useAuth";
-import { useUserStatus } from "@/hooks/useUserStatus";
-import { useTenant } from "@/hooks/useTenant";
-
-import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { UserStatusSelector } from "@/components/status/UserStatusSelector";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { navigationGroups, getNavigationGroups, NavGroup } from "@/components/navigation/navigationConfig";
-import { HelpDialog } from "@/components/navigation/HelpDialog";
-import { format, parseISO, isToday, isTomorrow } from "date-fns";
-import { de } from "date-fns/locale";
-import { Clock } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import "./appNavigation/sidebar.css";
+import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
+import { ChevronRight, Compass, MoreHorizontal, Plus, Star } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useTenantModuleGate } from "@/hooks/useTenantFeatureFlag";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
+import { useRecentlyVisited } from "@/hooks/useRecentlyVisited";
+import { useQuickAccessPages } from "@/hooks/useQuickAccessPages";
+import { useUserPreference } from "@/hooks/useUserPreference";
+import { useMatrixUnread } from "@/contexts/MatrixUnreadContext";
+import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
+import { useGlobalCreateActions } from "@/components/layout/globalCreateActions";
+import { SHOW_RECENT_PREF_KEY } from "./appNavigation/sidebarMode";
+import { targetsSamePage } from "@/lib/quickAccessTargets";
+import { cn } from "@/lib/utils";
+import { adminDestination, isDestinationAllowed, isNavigationModuleAllowed, navigationSections, topicsDestination, type NavigationDestination } from "./navigationConfig";
+import { NavGroupPreview } from "./appNavigation/NavGroupPreview";
+import { QuickAccessSection, RecentlyVisitedSection } from "./appNavigation/QuickAccessSection";
+import { FocusSummary } from "./appNavigation/FocusSummary";
+import { appointmentLabel } from "./appNavigation/sidebarAppointments";
+import { CommandSearchTrigger, SidebarIconButton } from "./appNavigation/SidebarControls";
+import { WorkspaceHeader } from "./appNavigation/WorkspaceHeader";
+import { SidebarFooter } from "./appNavigation/SidebarFooter";
+import { useNavPanelData } from "./appNavigation/useNavPanelData";
+import { useFocusSummary } from "./appNavigation/useFocusSummary";
+import { useSavedNavigation } from "./appNavigation/useSavedNavigation";
+import { useSidebarNavigation } from "./appNavigation/useSidebarNavigation";
+import type { NavigationProps, QuickAccessAddCategory, NavPreviewGroup } from "./appNavigation/types";
 
-import { useAppointmentRequest } from "@/hooks/useAppointmentRequest";
+type Badge = { value: number | string; kind: "action" | "unread" | "time"; label: string };
 
-// Re-export for backward compatibility
-export { getNavigationGroups };
-
-import type {
-  ActivePanel,
-  QuickAccessAddCategory,
-  NavigationProps,
-  NavPreviewGroup,
-  UpcomingAppointmentItem,
-} from "./appNavigation/types";
-import { notify } from "@/lib/notify";
-
-// Available pages for quick access
-const availableQuickPages: QuickAccessPage[] = [
-  { id: "mywork", label: "Meine Arbeit", icon: "NotebookTabs", route: "/mywork" },
-  { id: "notes", label: "Notizen", icon: "StickyNote", route: "/notes" },
-  { id: "calendar", label: "Kalender", icon: "Calendar", route: "/calendar" },
-  { id: "tasks", label: "Aufgaben", icon: "CheckSquare", route: "/tasks" },
-  { id: "contacts", label: "Kontakte", icon: "Users", route: "/contacts" },
-  { id: "casefiles", label: "Fallakten", icon: "Briefcase", route: "/casefiles" },
-  { id: "documents", label: "Dokumente", icon: "FileText", route: "/documents" },
-  { id: "decisions", label: "Entscheidungen", icon: "Vote", route: "/decisions" },
-  { id: "meetings", label: "Jour fixe", icon: "Calendar", route: "/meetings" },
-  { id: "chat", label: "Chat", icon: "MessageSquare", route: "/chat" },
-  { id: "wissen", label: "Wissen", icon: "Database", route: "/wissen" },
-  { id: "themen", label: "Themen", icon: "Tags", route: "/themen" },
-];
-
-export function AppNavigation({ 
-  activeSection, 
-  onSectionChange, 
-  isMobile,
-  onFollowHelpHint,
-}: NavigationProps) {
-  const { navigationCounts, markNavigationAsVisited } = useNavigationNotifications();
-  const { totalUnreadCount: matrixUnreadCount, hasCredentials: hasChatCredentials, unreadRooms, recentRoom } = useMatrixUnread();
-  const { role: userRole, hasAdminAccess, loading: isRoleLoading } = useResolvedUserRole();
-  const isAbgeordneter = userRole === 'abgeordneter';
-  const isBueroleitung = userRole === 'bueroleitung';
-  const showEmployeePage = isAbgeordneter || isBueroleitung;
-  // Bereiche mit `adminOnly` bleiben Mitarbeitenden verborgen.
-  const visibleGroups = useMemo(
-    () => getNavigationGroups()
-      .filter(group => group.id !== "employee" || showEmployeePage)
-      .map((group) => group.subItems
-        ? { ...group, subItems: group.subItems.filter((item) => !item.adminOnly || hasAdminAccess) }
-        : group),
-    [hasAdminAccess, showEmployeePage],
-  );
-  const { isDeputyView, loading: isViewLoading, setView } = useWorkspaceView();
-  const appSettings = useAppSettings();
-  useFavicon(appSettings.app_logo_url);
-  const { pages: quickAccessPages, addPage, removePage, isInQuickAccess } = useQuickAccessPages();
-  const { recentPages, trackVisit } = useRecentlyVisited();
-  const [showRecent] = useUserPreference<boolean>(SHOW_RECENT_PREF_KEY, false);
-  const { user, signOut } = useAuth();
-  const { currentStatus, getStatusDisplay } = useUserStatus();
-  const { currentTenant } = useTenant();
-  const navigate = useNavigate();
-  
-  // Appointment request hook
-  const {
-    requestTitle, setRequestTitle,
-    requestDate, setRequestDate,
-    requestTime, setRequestTime,
-    requestLocation, setRequestLocation,
-    requestRequester, setRequestRequester,
-    isSubmittingRequest,
-    resetForm: resetRequestForm,
-    createRequest,
-  } = useAppointmentRequest({
-    onSuccess: (message, description) => notify.success(message, { description 
-}),
-    onError: (message, description) => notify.error(message, { description
-}),
-  });
-  const [isQuickRequestOpen, setIsQuickRequestOpen] = useState(false);
-  
-  // Panel state
-  const [activePanel, setActivePanel] = useState<ActivePanel>('home');
-  const [previewGroup, setPreviewGroup] = useState<NavPreviewGroup | null>(null);
-  
-  // Expanded groups state
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [clickedItem, setClickedItem] = useState<string | null>(null);
-  const [pendingSection, setPendingSection] = useState<string | null>(null);
-  const [previousBadges, setPreviousBadges] = useState<Record<string, number>>({});
-  const [newBadgeItems, setNewBadgeItems] = useState<Set<string>>(new Set());
-  const [helpDialogOpen, setHelpDialogOpen] = useState(false);
-  const [quickAccessPopoverOpen, setQuickAccessPopoverOpen] = useState(false);
-  const [quickAccessAddCategory, setQuickAccessAddCategory] = useState<QuickAccessAddCategory | null>(null);
-  const [quickAccessPageIndex, setQuickAccessPageIndex] = useState(0);
-  
-  // User profile + panel data extracted to dedicated hook
-  const {
-    userProfile,
-    upcomingAppointments,
-    nextAppointment,
-    appointmentsLoading,
-    appointmentsError,
-    briefing,
-    previewTask,
-    taskLoading,
-    taskError,
-    caseFilesLoading,
-    caseFilesError,
-    previewContact,
-    contactLoading,
-    contactError,
-    pendingFeedbacks,
-    caseFiles,
-    quickAccessCaseItems,
-    isCaseItemsLoading,
-    quickAccessDocuments,
-    isDocumentsLoading,
-    quickAccessEventPlannings,
-    isEventPlanningsLoading,
-  } = useNavPanelData({
-    activePanel,
-    previewGroup,
-    quickAccessPopoverOpen,
-    quickAccessAddCategory,
-  });
-
-
-  const quickAccessPageOptions = useMemo(() => {
-    return availableQuickPages
-      .map((page) => ({
-        page,
-        isAdded: quickAccessPages.some((quickPage) => quickPage.id === page.id),
-      }))
-      .sort((a, b) => Number(a.isAdded) - Number(b.isAdded));
-  }, [quickAccessPages]);
-
-  // Auto-expand the group containing the active section
+export function AppNavigation({
+  activeSection, onNavigate, isMobile, onFollowHelpHint, compact = false, ghost, onToggle,
+}: NavigationProps & { compact?: boolean; ghost?: boolean; onToggle?: () => void }) {
+  const access = useResolvedUserRole();
+  const moduleEnabled = useTenantModuleGate(false);
+  const { isDeputyView } = useWorkspaceView();
+  const { totalUnreadCount } = useMatrixUnread();
+  const { pages, addPage, removePage } = useQuickAccessPages();
+  const { recentPages } = useRecentlyVisited();
+  const [showRecent] = useUserPreference(SHOW_RECENT_PREF_KEY, false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [category, setCategory] = useState<QuickAccessAddCategory | null>(null);
+  const [context, setContext] = useState<string | null>(null);
+  const afterContextClose = useRef<(() => void) | null>(null);
+  const [railResearchOpen, setRailResearchOpen] = useState(false);
+  const researchId = useId();
+  const actions = useGlobalCreateActions();
+  const navigateTo = useSidebarNavigation();
+  const sections = navigationSections.map(section => ({
+    ...section, items: section.items.filter(item => isDestinationAllowed(item, access) && isNavigationModuleAllowed(item.route, moduleEnabled)),
+  }));
+  const research = sections.find(section => section.id === "research")!;
+  const activeResearch = research.items.some(item => item.id === activeSection);
+  const [researchOpen, setResearchOpen] = useState(activeResearch);
   useEffect(() => {
-    const group = navigationGroups.find(g =>
-      g.subItems?.some(item => item.id === activeSection)
-    );
-    if (group) {
-      setExpandedGroups(prev => {
-        const next = new Set(prev);
-        next.add(group.id);
-        return next;
-      });
-    }
-  }, [activeSection]);
+    if (activeResearch) setResearchOpen(true);
+  }, [activeResearch, activeSection]);
 
-  // Track badge changes for animations
-  useEffect(() => {
-    const newItems = new Set<string>();
-    Object.entries(navigationCounts).forEach(([key, count]) => {
-      const prevCount = previousBadges[key] || 0;
-      if (count > prevCount) {
-        newItems.add(key);
-        setTimeout(() => {
-          setNewBadgeItems(prev => {
-            const updated = new Set(prev);
-            updated.delete(key);
-            return updated;
-          });
-        }, 3000);
-      }
-    });
-    if (newItems.size > 0) {
-      setNewBadgeItems(prev => new Set([...prev, ...newItems]));
-    }
-    setPreviousBadges(navigationCounts);
-  }, [navigationCounts]);
-
-  const handleNavigationClick = useCallback(async (sectionId: string) => {
-    setClickedItem(sectionId);
-    setTimeout(() => setClickedItem(null), 150);
-    setPendingSection(sectionId);
-    onSectionChange(sectionId);
-    setPendingSection(null);
-    // Switch to home panel when navigating
-    setActivePanel('home');
-    // Visiting bookkeeping must never delay or prevent opening a page.
-    void markNavigationAsVisited(sectionId).catch((error: unknown) => {
-      debugConsole.error('Error marking navigation as visited:', error);
-    });
-    // Track recently visited
-    const allPages = [...availableQuickPages];
-    navigationGroups.forEach(g => {
-      if (g.subItems) {
-        g.subItems.forEach(item => {
-          if (!allPages.some(p => p.id === item.id)) {
-            allPages.push({ id: item.id, label: item.label, icon: 'Circle', route: `/${item.id}` });
-          }
-        });
-      }
-    });
-    const matched = allPages.find(p => p.id === sectionId);
-    if (matched) {
-      trackVisit(sectionId, matched.label, matched.icon, matched.route);
-    }
-  }, [markNavigationAsVisited, onSectionChange, trackVisit]);
-
-  const handleLogoClick = () => {
-    setClickedItem('dashboard');
-    setTimeout(() => setClickedItem(null), 150);
-    onSectionChange('dashboard');
-    setActivePanel('home');
+  const previewGroup: NavPreviewGroup | null = sections.flatMap(section => section.items).find(item => item.id === context)?.preview ?? null;
+  const data = useNavPanelData({ previewGroup, quickAccessPopoverOpen: pickerOpen, quickAccessAddCategory: category });
+  const { approvalCount, taskCount, caseCount } = useFocusSummary(true, access.isAbgeordneter && isDeputyView, moduleEnabled("module.casefiles"));
+  const personalActions = approvalCount + taskCount + caseCount;
+  const personalActionLabel = [
+    approvalCount && `${approvalCount} offene Freigaben`,
+    taskCount && `${taskCount} persönliche Aufgaben`,
+    caseCount && `${caseCount} Vorgänge mit Handlungsbedarf`,
+  ].filter(Boolean).join(", ");
+  const displayed = useSavedNavigation(pages, access, true);
+  const recentlyVisited = useSavedNavigation(showRecent ? recentPages : [], access, !!showRecent);
+  const pinnable = [...sections.flatMap(section => section.items), topicsDestination];
+  const options = pinnable.map(pinFor);
+  const closeAfterNavigation = () => {
+    setContext(null);
+    setRailResearchOpen(false);
+    onNavigate?.();
   };
 
-  const toggleGroup = (groupId: string) => {
-    setExpandedGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(groupId)) next.delete(groupId);
-      else next.add(groupId);
-      return next;
-    });
-  };
-
-  const getGroupBadge = (group: NavGroup): number => {
-    if (!group.subItems) {
-      const directId = group.route ? group.route.slice(1) : group.id;
-      return navigationCounts[directId] || 0;
-    }
-    if (group.id === "communication") return matrixUnreadCount;
-    return group.subItems.reduce((total, item) => total + (navigationCounts[item.id] || 0), 0);
-  };
-
-  const isGroupActive = (group: NavGroup): boolean => {
-    if (group.route) {
-      const routeId = group.route.slice(1);
-      return activeSection === routeId || activeSection === group.id;
-    }
-    if (group.subItems) return group.subItems.some(item => item.id === activeSection);
-    return false;
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      notify.success('Erfolgreich abgemeldet', { description: 'Sie wurden erfolgreich abgemeldet.' 
-});
-      navigate('/auth');
-    } catch {
-      notify.error('Fehler beim Abmelden', { description: 'Ein Fehler ist beim Abmelden aufgetreten.'
-});
-    }
-  };
-
-  const statusDisplay = currentStatus ? getStatusDisplay(currentStatus) : null;
-
-  useEffect(() => {
-    const maxPageIndex = Math.max(0, Math.ceil(quickAccessPages.length / 8) - 1);
-    if (quickAccessPageIndex > maxPageIndex) {
-      setQuickAccessPageIndex(maxPageIndex);
-    }
-  }, [quickAccessPages.length, quickAccessPageIndex]);
-
-  // Skeleton loader
-  if (isRoleLoading) {
-    return (
-      <nav className="flex flex-col h-full w-full bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-border shrink-0">
-        <div className="h-14 flex items-center gap-2 px-4 border-b border-border">
-          <div className="h-7 w-7 rounded-lg animate-skeleton" />
-          <div className="h-4 w-24 rounded animate-skeleton" />
-        </div>
-        <div className="flex-1 flex flex-col py-2 gap-0.5 px-2">
-          {[1, 2, 3, 4, 5, 6, 7].map(i => (
-            <div key={i} className="flex items-center gap-2 py-1.5 px-2">
-              <div className="h-4 w-4 rounded animate-skeleton" />
-              <div className="h-3.5 w-20 rounded animate-skeleton" />
-            </div>
-          ))}
-        </div>
-      </nav>
-    );
+  function pinFor(item: NavigationDestination) {
+    return { id: item.id, label: item.label, icon: item.iconName, route: item.route };
   }
 
-  const renderNavItem = (
-    id: string,
-    Icon: ElementType,
-    label: string,
-    badge: number = 0,
-    indent: boolean = false,
-  ) => {
-    const isActive = activeSection === id;
-    const isPending = pendingSection === id;
+  function activate(event: MouseEvent, item: NavigationDestination) {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    closeAfterNavigation();
+    navigateTo(item);
+  }
 
-    return (
-      <button
-        key={id}
-        onClick={() => handleNavigationClick(id)}
-        aria-current={isActive ? "page" : undefined}
-        className={cn(
-          "relative flex items-center w-full gap-2 h-8 px-2 rounded-md text-sm",
-          "transition-colors duration-fast ease-standard",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
-          indent && "pl-8",
-          "hover:bg-[hsl(var(--nav-hover))]",
-          (isActive || isPending) && "bg-[hsl(var(--nav-active-bg))] font-medium",
-          !isActive && "text-[hsl(var(--nav-foreground))]"
-        )}
-      >
-        {(isActive || isPending) && (
-          <span
-            aria-hidden="true"
-            className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-primary"
-          />
-        )}
-        <div className="relative">
-          <Icon className={cn("h-4 w-4 shrink-0", clickedItem === id && "animate-nav-bounce")} />
-          {badge > 0 && (
-            <span className="absolute -top-1 -right-0.5 h-2 w-2 rounded-pill bg-destructive animate-pulse-slow" />
-          )}
-        </div>
-        <span className="truncate text-sm">{label}</span>
-      </button>
-    );
+  function visitSavedPage(event: MouseEvent, route: string) {
+    const item = pinnable.find(item => item.route === route);
+    if (item) activate(event, item);
+  }
+
+  const badges: Record<string, Badge | undefined> = {
+    mywork: personalActions > 0 ? { value: personalActions, kind: "action", label: personalActionLabel } : undefined,
+    tasks: taskCount > 0 ? { value: taskCount, kind: "action", label: `${taskCount} persönliche Aufgaben mit Handlungsbedarf` } : undefined,
+    chat: totalUnreadCount > 0 ? { value: totalUnreadCount, kind: "unread", label: `${totalUnreadCount} ungelesene Chatnachrichten` } : undefined,
+    calendar: data.nextAppointment ? { value: appointmentLabel(data.nextAppointment), kind: "time", label: `Nächster Termin · ${appointmentLabel(data.nextAppointment)}` } : undefined,
   };
 
-  const previewLinkClass = "block w-full rounded-md px-2 py-1.5 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  const renderBadge = (badge: Badge, rail: boolean) => (
+    <span aria-hidden="true" className={cn("mission-badge", `mission-badge-${badge.kind}`, !rail && "mission-row-badge")}>
+      {rail && badge.kind === "time" ? <span className="mission-time-dot" /> : typeof badge.value === "number" && badge.value > 99 ? "99+" : badge.value}
+    </span>
+  );
 
-  const renderPreviewSummary = (groupId: NavPreviewGroup) => {
-    const renderEntry = (to: string, title: string, detail: string) => (
-      <Link to={to} className={previewLinkClass} onClick={() => setPreviewGroup(null)}>
-        <span className="block break-words text-sm font-medium">{title}</span>
-        <span className="block break-words text-xs text-muted-foreground">{detail}</span>
+  const renderItem = (item: NavigationDestination, rail = compact) => {
+    const badge = badges[item.id];
+    const pin = pages.find(page => targetsSamePage(page, item));
+    const togglePin = () => { if (pin) removePage(pin.id); else addPage(pinFor(item)); };
+    const pinLabel = pin ? `${item.label} aus Schnellzugriff entfernen` : `${item.label} anheften`;
+    const itemActions = actions.filter(action => action.destination === item.id);
+    const link = (
+      <Link to={item.route} onClick={event => activate(event, item)}
+        aria-keyshortcuts={!rail && item.preview ? "ArrowRight" : undefined}
+        onKeyDown={event => {
+          if (!rail && item.preview && event.key === "ArrowRight" && !event.altKey && !event.metaKey && !event.ctrlKey && !event.shiftKey) {
+            event.preventDefault();
+            setContext(item.id);
+          }
+        }}
+        aria-current={activeSection === item.id ? "page" : undefined}
+        aria-label={badge ? `${item.label} · ${badge.label}` : item.label}
+        className={cn("mission-link", rail && "mission-rail-link")}>
+        <item.icon aria-hidden="true" />
+        {!rail && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
+        {rail && badge && renderBadge(badge, true)}
       </Link>
     );
 
-    let message: string;
-    if (groupId === "calendar") {
-      message = appointmentsLoading ? "Termine werden geladen …"
-        : appointmentsError ? "Termine konnten nicht geladen werden."
-        : "Keine anstehenden Termine in den nächsten fünf Tagen.";
-      if (nextAppointment) {
-        const date = parseISO(nextAppointment.start_time);
-        const when = isToday(date) ? "Heute" : isTomorrow(date) ? "Morgen" : format(date, "EEE, d. MMM", { locale: de });
-        const time = nextAppointment.is_all_day ? "Ganztägig" : format(date, "HH:mm");
-        const highlight = nextAppointment.isExternal ? `external-${nextAppointment.id}` : nextAppointment.id;
-        const status = asBriefingStatus(nextAppointment.briefingStatus);
-        return (
-          <>
-            {renderEntry(`/calendar?highlight=${highlight}`, nextAppointment.title, [when, time, nextAppointment.location].filter(Boolean).join(" · "))}
-            {nextAppointment.briefingStatus && status !== "none" && (
-              briefing
-                ? renderEntry(`/appointment-preparation/${briefing.id}?view=briefing`, "Briefing öffnen", BRIEFING_STATUS_LABELS[status])
-                : <p className="px-2 py-1 text-xs text-muted-foreground">{BRIEFING_STATUS_LABELS[status]}</p>
-            )}
-          </>
-        );
-      }
-    } else if (groupId === "tasks") {
-      message = taskLoading ? "Aufgaben werden geladen …"
-        : taskError ? "Aufgaben konnten nicht geladen werden."
-        : "Keine offenen Aufgaben.";
-      if (previewTask) {
-        const assignee = previewTask.ball_assignee_id === user?.id ? "Bei dir" : ballAssigneeLabel(previewTask).label;
-        const due = previewTask.next_action_due ?? previewTask.due_date;
-        return renderEntry(
-          `/tasks?task=${previewTask.id}`,
-          previewTask.title,
-          [assignee, due && `Fällig ${format(parseISO(due), "dd.MM.")}`, previewTask.next_action?.trim()].filter(Boolean).join(" · "),
-        );
-      }
-    } else if (groupId === "communication") {
-      const unreadRoom = [...unreadRooms].sort((a, b) =>
-        Number(b.highlightCount > 0) - Number(a.highlightCount > 0) || (b.activity ?? 0) - (a.activity ?? 0),
-      )[0];
-      const room = unreadRoom ?? recentRoom;
-      const count = unreadRooms.length;
-      message = count > 0 ? `${count} ungelesene${count === 1 ? "r Chat" : " Chats"}`
-        : hasChatCredentials ? "Keine ungelesenen Chats."
-        : "Chat öffnen, um die Verbindung einzurichten.";
-      if (room) {
-        const detail = unreadRoom
-          ? unreadRoom.highlightCount > 0 ? "Ungelesene Hervorhebung" : "Ungelesene Nachrichten"
-          : "Zuletzt geöffneter Chat";
-        return (
-          <>
-            <p className="px-2 py-1 text-xs text-muted-foreground">{message}</p>
-            {renderEntry(`/chat?${new URLSearchParams({ room: room.roomId })}`, room.name === room.roomId ? "Chatraum" : room.name, detail)}
-          </>
-        );
-      }
-    } else if (groupId === "people") {
-      message = contactLoading ? "Kontakt wird geladen …"
-        : contactError ? "Kontakt konnte nicht geladen werden."
-        : "Kein Kontakt zum nächsten Termin oder zur letzten Fallakte.";
-      if (previewContact) {
-        const { contact, role, context } = previewContact;
-        return renderEntry(
-          `/contacts/${contact.id}`,
-          contact.name,
-          [context, role || contact.position, contact.organization].filter(Boolean).join(" · "),
-        );
-      }
-    } else {
-      message = caseFilesLoading ? "Fallakten werden geladen …"
-        : caseFilesError ? "Fallakten konnten nicht geladen werden."
-        : "Keine eigenen oder zugewiesenen Fallakten.";
-      const caseFile = caseFiles[0];
-      if (caseFile) {
-        const note = caseFile.current_status_note?.replace(/<[^>]*>/g, "").trim();
-        return renderEntry(
-          `/casefiles?caseFileId=${caseFile.id}`,
-          caseFile.title,
-          note ? note.slice(0, 140) + (note.length > 140 ? "…" : "") : caseFile.reference_number || "Zuletzt aktualisierte Fallakte",
-        );
-      }
-    }
-
-    return <p role="status" className="px-2 py-1.5 text-xs text-muted-foreground">{message}</p>;
-  };
-
-  const withGroupPreview = (id: NavPreviewGroup, label: string, trigger: ReactElement, links: { id: string; label: string }[]) => (
-    <NavGroupPreview
-      key={id}
-      label={label}
-      open={previewGroup === id}
-      onOpenChange={(open) => setPreviewGroup((current) => open ? id : current === id ? null : current)}
-      trigger={trigger}
-    >
-      {renderPreviewSummary(id)}
-      <div className="mt-2 border-t pt-2">
-        {links.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={cn(previewLinkClass, "text-sm")}
-            onClick={() => {
-              setPreviewGroup(null);
-              void handleNavigationClick(item.id);
-            }}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-    </NavGroupPreview>
-  );
-
-  const renderNavGroup = (group: NavGroup) => {
-    const badge = getGroupBadge(group);
-    const isActive = isGroupActive(group);
-    const isExpanded = expandedGroups.has(group.id);
-    const subItems = group.subItems ?? [];
-    const targetId = group.route ? group.route.slice(1) : (subItems[0]?.id || group.id);
-
-    if (subItems.length <= 1) {
-      const Icon = subItems[0]?.icon || group.icon;
-      const label = subItems[0]?.label || group.label;
-      const trigger = renderNavItem(targetId, Icon, label, badge);
-      if (!isMobile && (group.id === "communication" || group.id === "people")) {
-        return withGroupPreview(group.id, group.label, trigger, [
-          { id: targetId, label: group.id === "people" ? "Kontakte suchen" : "Chat öffnen" },
-        ]);
-      }
-      return trigger;
-    }
-
-    const submenuId = `app-nav-submenu-${isMobile ? "mobile" : "desktop"}-${group.id}`;
-    const Chevron = isExpanded ? ChevronDown : ChevronRight;
-
-    const trigger = (
-      <button
-        type="button"
-        onClick={() => handleNavigationClick(targetId)}
-        aria-current={activeSection === targetId ? "page" : undefined}
-        className={cn(
-          "flex min-w-0 flex-1 items-center gap-2 h-8 px-2 rounded-l-md text-sm",
-          "transition-colors duration-fast ease-standard",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-          "hover:bg-[hsl(var(--nav-hover))]",
-          isActive && "font-medium"
-        )}
-      >
-        <div className="relative">
-          <group.icon className="h-4 w-4 shrink-0" />
-          {badge > 0 && (
-            <span className="absolute -top-1 -right-0.5 h-2 w-2 rounded-pill bg-destructive animate-pulse-slow" />
-          )}
-        </div>
-        <span className="truncate text-sm">{group.label}</span>
-      </button>
-    );
-    const id = group.id;
-    const supportsPreview = id === "calendar" || id === "tasks" || id === "files";
-
     return (
-      <div key={id}>
-        <div className="flex items-center">
-          {supportsPreview && !isMobile ? withGroupPreview(id, group.label, trigger, subItems) : trigger}
-          <button
-            type="button"
-            onClick={() => toggleGroup(group.id)}
-            aria-label={`${group.label}: Untermenü ${isExpanded ? "einklappen" : "ausklappen"}`}
-            aria-expanded={isExpanded}
-            aria-controls={submenuId}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-r-md text-[hsl(var(--nav-muted))] transition-colors hover:bg-[hsl(var(--nav-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-          >
-            <Chevron aria-hidden="true" className="h-3 w-3" />
-          </button>
-        </div>
-        <div id={submenuId} hidden={!isExpanded} className="mt-0.5">
-          {isExpanded && subItems.map(item =>
-            renderNavItem(item.id, item.icon, item.label, navigationCounts[item.id] || 0, true)
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  // ─── Panel renderers ───
-
-  const renderHomePanel = () => (
-    <div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
-      <div className="flex flex-col gap-0.5">
-        {visibleGroups.map(group => renderNavGroup(group))}
-      </div>
-
-      {/* Quick Access / Favoriten */}
-      <div className="mt-3 border-t border-border pt-2">
-        {(() => {
-          const QUICK_ACCESS_PAGE_SIZE = 8;
-          const quickAccessPageCount = Math.max(1, Math.ceil(quickAccessPages.length / QUICK_ACCESS_PAGE_SIZE));
-          const paginatedQuickAccessPages = quickAccessPages.slice(
-            quickAccessPageIndex * QUICK_ACCESS_PAGE_SIZE,
-            (quickAccessPageIndex + 1) * QUICK_ACCESS_PAGE_SIZE
-          );
-
-          return (
-            <>
-        <div className="flex items-center justify-between px-2 mb-1">
-          <span className="text-[11px] font-medium text-[hsl(var(--nav-muted))] uppercase tracking-wider">
-            Schnellzugriff
-          </span>
-          <div className="flex items-center gap-1">
-            {quickAccessPageCount > 1 && (
-              <>
-                <button
-                  onClick={() => setQuickAccessPageIndex((index) => Math.max(0, index - 1))}
-                  disabled={quickAccessPageIndex === 0}
-                  className="h-5 w-5 rounded flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  aria-label="Vorherige Schnellzugriffe"
-                >
-                  <ChevronLeft className="h-3 w-3 text-[hsl(var(--nav-muted))]" />
-                </button>
-                <button
-                  onClick={() => setQuickAccessPageIndex((index) => Math.min(quickAccessPageCount - 1, index + 1))}
-                  disabled={quickAccessPageIndex >= quickAccessPageCount - 1}
-                  className="h-5 w-5 rounded flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  aria-label="Nächste Schnellzugriffe"
-                >
-                  <ChevronRight className="h-3 w-3 text-[hsl(var(--nav-muted))]" />
-                </button>
-              </>
+      <div className="mission-row" key={item.id}>
+        {rail ? <Tooltip><TooltipTrigger asChild>{link}</TooltipTrigger><TooltipContent className="mission-tooltip" side="right">
+          {item.label}{badge && ` · ${badge.label}`}
+        </TooltipContent></Tooltip> : link}
+        {!rail && !item.preview && (
+          <div className="mission-row-actions">
+            {item.create && (
+              <Link to={item.create.route} className="mission-icon" aria-label={item.create.label} title={item.create.label} onClick={closeAfterNavigation}>
+                <Plus aria-hidden="true" />
+              </Link>
             )}
-          <Popover open={quickAccessPopoverOpen} onOpenChange={setQuickAccessPopoverOpen}>
-            <PopoverTrigger asChild>
-              <button className="h-5 w-5 rounded flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors">
-                <Plus className="h-3 w-3 text-[hsl(var(--nav-muted))]" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent side="right" align="start" className="w-64 p-1.5">
-              {!quickAccessAddCategory ? (
-                <>
-                  <div className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Hinzufügen</div>
-                  <button
-                    onClick={() => setQuickAccessAddCategory('pages')}
-                    className="flex items-center justify-between gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
-                  >
-                    <span>Seite hinzufügen</span>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-                  <button
-                    onClick={() => setQuickAccessAddCategory('case-items')}
-                    className="flex items-center justify-between gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
-                  >
-                    <span>Vorgang hinzufügen</span>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-                  <button
-                    onClick={() => setQuickAccessAddCategory('documents')}
-                    className="flex items-center justify-between gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
-                  >
-                    <span>Dokument hinzufügen</span>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-                  <button
-                    onClick={() => setQuickAccessAddCategory('event-plannings')}
-                    className="flex items-center justify-between gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
-                  >
-                    <span>Veranstaltungs-/Terminplanung hinzufügen</span>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={() => setQuickAccessAddCategory(null)}
-                    className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    <ArrowLeft className="h-3.5 w-3.5" />
-                    Zurück
-                  </button>
-
-                  {quickAccessAddCategory === 'pages' && (
-                    <>
-                      <div className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Seite hinzufügen</div>
-                      {quickAccessPageOptions.map(({ page, isAdded }) => (
-                        <button
-                          key={page.id}
-                          onClick={() => {
-                            if (isAdded) return;
-                            addPage(page);
-                            setQuickAccessPopoverOpen(false);
-                            setQuickAccessAddCategory(null);
-                          }}
-                          className={cn(
-                            "flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded transition-colors",
-                            isAdded ? "text-muted-foreground cursor-not-allowed" : "hover:bg-accent"
-                          )}
-                        >
-                          {isAdded ? <Check className="h-3.5 w-3.5" /> : <Star className="h-3.5 w-3.5 text-muted-foreground" />}
-                          <span className="truncate">{page.label}</span>
-                        </button>
-                      ))}
-                    </>
-                  )}
-
-                  {quickAccessAddCategory === 'case-items' && (
-                    <>
-                      <div className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Vorgang hinzufügen</div>
-                      {isCaseItemsLoading && <div className="px-2 py-1.5 text-xs text-muted-foreground">Lade Vorgänge…</div>}
-                      {!isCaseItemsLoading && quickAccessCaseItems.map((item: Record<string, any>) => (
-                        <button
-                          key={item.id}
-                          onClick={() => {
-                            addPage({ id: `case-item-${item.id}`, label: item.label, icon: 'Briefcase', route: buildCaseItemHref(item.id), type: 'item' });
-                            setQuickAccessPopoverOpen(false);
-                            setQuickAccessAddCategory(null);
-                          }}
-                          className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
-                        >
-                          <Briefcase className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <span className="truncate">{item.label}</span>
-                          {item.preferred && <span className="ml-auto text-[10px] text-primary">Meine</span>}
-                        </button>
-                      ))}
-                      {!isCaseItemsLoading && quickAccessCaseItems.length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">Keine Vorgänge gefunden</div>}
-                    </>
-                  )}
-
-                  {quickAccessAddCategory === 'documents' && (
-                    <>
-                      <div className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Dokument hinzufügen</div>
-                      {isDocumentsLoading && <div className="px-2 py-1.5 text-xs text-muted-foreground">Lade Dokumente…</div>}
-                      {!isDocumentsLoading && quickAccessDocuments.map((item: Record<string, any>) => (
-                        <button
-                          key={item.id}
-                          onClick={() => {
-                            addPage({ id: `document-${item.id}`, label: item.label, icon: 'FileText', route: buildDocumentHref(item.id), type: 'item' });
-                            setQuickAccessPopoverOpen(false);
-                            setQuickAccessAddCategory(null);
-                          }}
-                          className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
-                        >
-                          <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <span className="truncate">{item.label}</span>
-                          {item.preferred && <span className="ml-auto text-[10px] text-primary">Meine</span>}
-                        </button>
-                      ))}
-                      {!isDocumentsLoading && quickAccessDocuments.length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">Keine Dokumente gefunden</div>}
-                    </>
-                  )}
-
-                  {quickAccessAddCategory === 'event-plannings' && (
-                    <>
-                      <div className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Veranstaltungs-/Terminplanung hinzufügen</div>
-                      {isEventPlanningsLoading && <div className="px-2 py-1.5 text-xs text-muted-foreground">Lade Planungen…</div>}
-                      {!isEventPlanningsLoading && quickAccessEventPlannings.map((item: Record<string, any>) => (
-                        <button
-                          key={item.id}
-                          onClick={() => {
-                            addPage({ id: `event-planning-${item.id}`, label: item.label, icon: 'CalendarPlus', route: `/eventplanning/${item.id}?highlight=${item.id}`, type: 'item' });
-                            setQuickAccessPopoverOpen(false);
-                            setQuickAccessAddCategory(null);
-                          }}
-                          className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors"
-                        >
-                          <CalendarPlus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                          <span className="truncate">{item.label}</span>
-                          {item.preferred && <span className="ml-auto text-[10px] text-primary">Meine</span>}
-                        </button>
-                      ))}
-                      {!isEventPlanningsLoading && quickAccessEventPlannings.length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">Keine Planungen gefunden</div>}
-                    </>
-                  )}
-                </>
-              )}
-            </PopoverContent>
-          </Popover>
-          </div>
-        </div>
-        {paginatedQuickAccessPages.map(page => (
-          <div key={page.id} className="group flex items-center">
-            <button
-              onClick={() => {
-                if (page.type === 'item' && page.route) {
-                  navigate(page.route);
-                  setActivePanel('home');
-                } else {
-                  handleNavigationClick(page.route?.slice(1) || page.id);
-                }
-              }}
-              className={cn(
-                "flex-1 flex items-center gap-2 py-1 px-2 rounded-md text-sm transition-colors truncate",
-                "hover:bg-[hsl(var(--nav-hover))]",
-                activeSection === page.id && "bg-[hsl(var(--nav-active-bg))] font-medium"
-              )}
-            >
-              {page.type === 'item' ? (
-                <Briefcase className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))] shrink-0" />
-              ) : (
-                <Star className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))] shrink-0" />
-              )}
-              <span className="truncate">{page.label}</span>
-            </button>
-            <button
-              onClick={() => removePage(page.id)}
-              className="h-5 w-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-[hsl(var(--nav-hover))] transition-all shrink-0"
-            >
-              <X className="h-3 w-3 text-[hsl(var(--nav-muted))]" />
-            </button>
-          </div>
-        ))}
-        {quickAccessPages.length === 0 && (
-          <div className="px-2 py-1 text-[11px] text-[hsl(var(--nav-muted))]">
-            Noch keine Favoriten
-          </div>
-        )}
-        {quickAccessPages.length > 0 && quickAccessPageCount > 1 && (
-          <div className="px-2 pt-1 text-[10px] text-[hsl(var(--nav-muted))]">
-            Seite {quickAccessPageIndex + 1} von {quickAccessPageCount}
-          </div>
-        )}
-            </>
-          );
-        })()}
-      </div>
-
-      {/* Recently Visited */}
-      {showRecent && recentPages.length > 0 && (
-        <div className="mt-3 border-t border-border pt-2">
-          <div className="flex items-center px-2 mb-1">
-            <span className="text-[11px] font-medium text-[hsl(var(--nav-muted))] uppercase tracking-wider">
-              Kürzlich besucht
-            </span>
-          </div>
-          {recentPages.slice(0, 5).map(page => {
-            const hasTabRoute = page.route.includes('?');
-            const quickAccessActive = isInQuickAccess(page.id);
-            const handleClick = () => {
-              if (hasTabRoute) {
-                navigate(page.route);
-                setActivePanel('home');
-              } else {
-                // Extract section id from route or use page.id
-                const sectionId = page.route.startsWith('/') ? page.route.slice(1) : page.id;
-                handleNavigationClick(sectionId);
-              }
-            };
-            return (
-              <div key={page.id} className="group flex items-center">
-                <button
-                  onClick={handleClick}
-                  className={cn(
-                    "flex-1 flex items-center gap-2 py-1 px-2 rounded-md text-[12px] transition-colors truncate",
-                    "hover:bg-[hsl(var(--nav-hover))]",
-                    activeSection === page.id && "bg-[hsl(var(--nav-active-bg))] font-medium"
-                  )}
-                >
-                  <Clock className="h-3 w-3 text-[hsl(var(--nav-muted))] shrink-0" />
-                  <span className="truncate">{page.label}</span>
-                </button>
-                <button
-                  onClick={() => {
-                    if (quickAccessActive) {
-                      removePage(page.id);
-                    } else {
-                      addPage({ id: page.id, label: page.label, icon: page.icon, route: page.route });
-                    }
-                  }}
-                  className={cn(
-                    "h-5 w-5 rounded flex items-center justify-center transition-all shrink-0",
-                    quickAccessActive
-                      ? "opacity-100"
-                      : "opacity-0 group-hover:opacity-100 hover:bg-[hsl(var(--nav-hover))]"
-                  )}
-                  aria-label={quickAccessActive ? "Aus Schnellzugriff entfernen" : "Zum Schnellzugriff hinzufügen"}
-                >
-                  <Star className={cn("h-3 w-3", quickAccessActive ? "fill-current text-palette-amber" : "text-[hsl(var(--nav-muted))]")} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderAppointmentsPanel = () => {
-    // Group appointments by day
-    const grouped: Record<string, typeof upcomingAppointments> = {};
-    upcomingAppointments.forEach(apt => {
-      const date = new Date(apt.start_time);
-      const key = format(date, 'yyyy-MM-dd');
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push(apt);
-    });
-
-    const getDayLabel = (dateStr: string) => {
-      const d = new Date(dateStr);
-      if (isToday(d)) return 'Heute';
-      if (isTomorrow(d)) return 'Morgen';
-      return format(d, 'EEEE, d. MMM', { locale: de });
-    };
-
-    return (
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-          <span className="text-sm font-semibold text-[hsl(var(--nav-foreground))]">Termine</span>
-          <button
-            onClick={() => handleNavigationClick('calendar')}
-            className="text-[11px] text-[hsl(var(--nav-muted))] hover:text-[hsl(var(--nav-foreground))] transition-colors"
-          >
-            Kalender →
-          </button>
-        </div>
-
-        {/* Pending feedbacks banner */}
-        {pendingFeedbacks.length > 0 && (
-          <div className="mx-2 mt-2 p-2 rounded-md bg-palette-amber/10 border border-palette-amber/20">
-            <p className="text-[12px] font-medium text-palette-amber">
-              ⚠ {pendingFeedbacks.length} offene Termin-Rückmeldung{pendingFeedbacks.length > 1 ? 'en' : ''}
-            </p>
-            <button
-              onClick={() => handleNavigationClick('mywork')}
-              className="text-[11px] text-palette-amber hover:underline mt-0.5"
-            >
-              Zur Übersicht
-            </button>
-          </div>
-        )}
-
-        <ScrollArea className="flex-1">
-          {upcomingAppointments.length === 0 ? (
-            <div className="px-4 py-12 text-center">
-              <Calendar className="h-8 w-8 mx-auto mb-2 text-[hsl(var(--nav-muted))]" />
-              <p className="text-sm text-[hsl(var(--nav-muted))]">Keine anstehenden Termine</p>
-            </div>
-          ) : (
-            <div className="p-2 space-y-3">
-              {Object.entries(grouped).map(([dateKey, apts]) => (
-                <div key={dateKey}>
-                  <p className="text-[11px] font-semibold text-[hsl(var(--nav-muted))] uppercase tracking-wider px-2 mb-1">
-                    {getDayLabel(dateKey)}
-                  </p>
-                  <div className="space-y-0.5">
-                    {apts.map(apt => (
-                      <button
-                        key={apt.id}
-                        onClick={() => handleNavigationClick('calendar')}
-                        className="flex items-start gap-2 w-full px-2 py-1.5 rounded-md text-left hover:bg-[hsl(var(--nav-hover))] transition-colors"
-                      >
-                        <div className="w-1 h-full min-h-[24px] rounded-full bg-primary shrink-0 mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[12px] font-medium truncate">{apt.title}</p>
-                          <p className="text-[11px] text-[hsl(var(--nav-muted))]">
-                            {apt.is_all_day
-                              ? 'Ganztägig'
-                              : apt.end_time
-                                ? `${format(new Date(apt.start_time), 'HH:mm')} – ${format(new Date(apt.end_time), 'HH:mm')}`
-                                : format(new Date(apt.start_time), 'HH:mm')}
-                          </p>
-                          {apt.location && (
-                            <p className="text-[10px] text-[hsl(var(--nav-muted))] truncate">{apt.location}</p>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </ScrollArea>
-
-        {/* Quick Appointment Request */}
-        <div className="border-t border-border p-2">
-          <Collapsible open={isQuickRequestOpen} onOpenChange={(open) => {
-            setIsQuickRequestOpen(open);
-            if (open) resetRequestForm();
-          }}>
-            <CollapsibleTrigger asChild>
-              <button className="flex items-center justify-between w-full px-2 py-1.5 rounded-md text-[12px] hover:bg-[hsl(var(--nav-hover))] transition-colors">
-                <span className="flex items-center gap-1.5">
-                  <Plus className="h-3.5 w-3.5" />
-                  <span className="font-medium">Terminanfrage</span>
-                </span>
-                <ChevronDown className={cn("h-3 w-3 text-[hsl(var(--nav-muted))] transition-transform", isQuickRequestOpen && "rotate-180")} />
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-2 pt-2 px-1">
-              <div>
-                <Label htmlFor="nav-req-title" className="text-[11px]">Titel</Label>
-                <Input id="nav-req-title" value={requestTitle} onChange={e => setRequestTitle(e.target.value)} placeholder="z. B. Gespräch mit Verband" className="h-7 text-xs" />
-              </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                <div>
-                  <Label htmlFor="nav-req-date" className="text-[11px]">Datum</Label>
-                  <Input id="nav-req-date" type="date" value={requestDate} onChange={e => setRequestDate(e.target.value)} className="h-7 text-xs" />
-                </div>
-                <div>
-                  <Label htmlFor="nav-req-time" className="text-[11px]">Uhrzeit</Label>
-                  <Input id="nav-req-time" type="time" value={requestTime} onChange={e => setRequestTime(e.target.value)} className="h-7 text-xs" />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="nav-req-location" className="text-[11px]">Ort / Format</Label>
-                <Input id="nav-req-location" value={requestLocation} onChange={e => setRequestLocation(e.target.value)} placeholder="Landtag / Digital" className="h-7 text-xs" />
-              </div>
-              <div>
-                <Label htmlFor="nav-req-requester" className="text-[11px]">Anfragende Stelle</Label>
-                <Input id="nav-req-requester" value={requestRequester} onChange={e => setRequestRequester(e.target.value)} placeholder="Name / Organisation" className="h-7 text-xs" />
-              </div>
-              <Button size="sm" className="w-full h-7 text-xs" onClick={createRequest} disabled={isSubmittingRequest}>
-                {isSubmittingRequest ? 'Erstelle…' : 'Terminanfrage anlegen'}
-              </Button>
-            </CollapsibleContent>
-          </Collapsible>
-        </div>
-      </div>
-    );
-  };
-
-  const renderCasefilesPanel = () => (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-        <span className="text-sm font-semibold text-[hsl(var(--nav-foreground))]">Fallakten</span>
-        <button
-          onClick={() => handleNavigationClick('casefiles')}
-          className="text-[11px] text-[hsl(var(--nav-muted))] hover:text-[hsl(var(--nav-foreground))] transition-colors"
-        >
-          Alle anzeigen →
-        </button>
-      </div>
-
-      {/* Dossier Upload Area */}
-      <NavDossierCapture />
-
-      <ScrollArea className="flex-1 mt-2">
-        {caseFiles.length === 0 ? (
-          <div className="px-4 py-12 text-center">
-            <Briefcase className="h-8 w-8 mx-auto mb-2 text-[hsl(var(--nav-muted))]" />
-            <p className="text-sm text-[hsl(var(--nav-muted))]">Keine Fallakten</p>
-          </div>
-        ) : (
-          <div className="space-y-0.5 p-2">
-            {caseFiles.map((cf: Record<string, any>) => (
-              <button
-                key={cf.id}
-                onClick={() => handleNavigationClick('casefiles')}
-                className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-left hover:bg-[hsl(var(--nav-hover))] transition-colors"
-              >
-                <Briefcase className="h-3.5 w-3.5 shrink-0 text-[hsl(var(--nav-muted))]" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-medium truncate">{cf.title}</p>
-                  <p className="text-[10px] text-[hsl(var(--nav-muted))]">
-                    {cf.reference_number || cf.status}
-                  </p>
-                </div>
-              </button>
+            {itemActions.map(action => (
+              <SidebarIconButton key={action.id} label={action.label} onClick={() => action.run()}><Plus aria-hidden="true" /></SidebarIconButton>
             ))}
+            <SidebarIconButton label={pinLabel} aria-pressed={!!pin} onClick={togglePin}>
+              <Star className={cn(pin && "fill-current")} aria-hidden="true" />
+            </SidebarIconButton>
           </div>
         )}
-      </ScrollArea>
-    </div>
+        {!rail && item.preview && (
+          <div className="mission-row-actions">
+            <Popover open={context === item.id} onOpenChange={open => setContext(open ? item.id : null)}>
+              <PopoverTrigger asChild>
+                <button type="button" className="mission-icon" aria-label={`Aktionen für ${item.label}`} title={`Aktionen für ${item.label}`}>
+                  <MoreHorizontal aria-hidden="true" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="right" align="start" aria-label={item.label} className="w-72 max-w-[calc(100vw-1rem)] p-2" onCloseAutoFocus={() => {
+                const action = afterContextClose.current;
+                afterContextClose.current = null;
+                if (action) window.setTimeout(action, 0);
+              }}>
+                <NavGroupPreview group={item.preview} data={data} onNavigate={closeAfterNavigation} />
+                <div className="mt-1 border-t pt-1">
+                  {item.create && (
+                    <Link to={item.create.route} className="mission-preview-link flex items-center gap-2" onClick={closeAfterNavigation}>
+                      <Plus className="size-4" aria-hidden="true" />{item.create.label}
+                    </Link>
+                  )}
+                  {itemActions.map(action => (
+                    <button key={action.id} type="button" className="mission-preview-link flex items-center gap-2" onClick={() => {
+                      afterContextClose.current = () => action.run();
+                      setContext(null);
+                    }}>
+                      <action.icon className="size-4" aria-hidden="true" />{action.label}
+                    </button>
+                  ))}
+                  <button type="button" className="mission-preview-link flex items-center gap-2" onClick={() => {
+                    togglePin();
+                    setContext(null);
+                  }}>
+                    <Star className={cn("size-4", pin && "fill-current")} aria-hidden="true" />
+                    {pin ? "Aus Schnellzugriff entfernen" : "Zum Schnellzugriff hinzufügen"}
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
+        {!rail && badge && renderBadge(badge, false)}
+      </div>
+    );
+  };
+
+  const renderSection = (section: (typeof sections)[number]) => (
+    <section key={section.id} aria-label={section.label}>
+      {!compact && <div className={cn("mission-section-heading", section.id === "focus" && "mission-focus-heading")}>
+        <h2>{section.label}</h2>
+        {section.id === "focus" && <span className="mission-meta">Heute</span>}
+      </div>}
+      {section.items.map(item => renderItem(item))}
+      {section.id === "focus" && !compact && (
+        <FocusSummary approvalCount={approvalCount} nextAppointment={data.nextAppointment} onNavigate={closeAfterNavigation} />
+      )}
+    </section>
   );
 
   return (
-    <TooltipProvider delayDuration={300}>
-      <nav className={cn(
-        "flex flex-col w-full bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-border shrink-0 select-none",
-        isMobile ? "h-full pb-safe-bottom" : "h-app"
-      )}>
-        {/* Logo + Workspace Name + Subtitle */}
-        <div className="flex items-center gap-2.5 px-4 py-3 shrink-0">
-          <button onClick={handleLogoClick} className="transition-transform hover:scale-105 shrink-0">
-            {appSettings.app_logo_url ? (
-              <img 
-                src={appSettings.app_logo_url} 
-                alt="Logo" 
-                crossOrigin="anonymous"
-                className={cn("h-7 w-7 object-contain", clickedItem === 'dashboard' && "animate-nav-bounce")}
-              />
-            ) : (
-              <div className={cn(
-                "h-7 w-7 rounded-lg bg-primary flex items-center justify-center",
-                clickedItem === 'dashboard' && "animate-nav-bounce"
-              )}>
-                <Home className="h-3.5 w-3.5 text-primary-foreground" />
-              </div>
-            )}
-          </button>
-          <div className="min-w-0">
-            <span className="text-sm font-semibold truncate block text-[hsl(var(--nav-foreground))]">
-              {appSettings.app_name || 'Workspace'}
-            </span>
-            {appSettings.app_subtitle && (
-              <span className="text-[11px] text-[hsl(var(--nav-muted))] truncate block">
-                {appSettings.app_subtitle}
-              </span>
-            )}
-          </div>
+    <TooltipProvider delayDuration={250} disableHoverableContent>
+      <nav aria-label="Hauptnavigation" className={cn("mission-sidebar", compact && "mission-sidebar-compact", isMobile && "mission-sidebar-mobile")}>
+        <div className="mission-top">
+          <WorkspaceHeader compact={compact} onNavigate={closeAfterNavigation} />
+          <CommandSearchTrigger compact={compact} />
         </div>
-
-        {setView && (
-          <label className="mx-3 flex shrink-0 flex-wrap items-center gap-2 px-2 py-2 text-xs">
-            <Switch
-              aria-label="Abgeordnetenansicht"
-              checked={isDeputyView}
-              disabled={isViewLoading}
-              onCheckedChange={(checked) => setView(checked ? "abgeordneter" : "mitarbeiter")}
-            />
-            <span>{isDeputyView ? "Abgeordneter" : "Mitarbeiter"}</span>
-          </label>
-        )}
-
-        {/* Quick Action Buttons (Panel Switchers) */}
-        <div className="flex flex-wrap items-center gap-1 px-3 py-3">
-          {/* Home */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setActivePanel('home')}
-                className={cn(
-                  "h-7 rounded-md flex items-center gap-1.5 px-2 transition-colors",
-                  activePanel === 'home' ? "bg-[hsl(var(--nav-active-bg))] font-medium" : "hover:bg-[hsl(var(--nav-hover))]"
-                )}
-              >
-                <Home className="h-4 w-4 shrink-0" />
-                {activePanel === 'home' && <span className="text-xs">Home</span>}
-              </button>
-            </TooltipTrigger>
-            {activePanel !== 'home' && <TooltipContent side="bottom" className="text-xs">Navigation</TooltipContent>}
-          </Tooltip>
-
-          {/* Appointments */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setActivePanel(activePanel === 'appointments' ? 'home' : 'appointments')}
-                className={cn(
-                  "h-7 rounded-md flex items-center gap-1.5 px-2 transition-colors",
-                  activePanel === 'appointments' ? "bg-[hsl(var(--nav-active-bg))] font-medium" : "hover:bg-[hsl(var(--nav-hover))]"
-                )}
-              >
-                <Calendar className="h-4 w-4 shrink-0" />
-                {activePanel === 'appointments' && <span className="text-xs">Termine</span>}
-              </button>
-            </TooltipTrigger>
-            {activePanel !== 'appointments' && <TooltipContent side="bottom" className="text-xs">Termine</TooltipContent>}
-          </Tooltip>
-
-          <div className="ml-auto">
-            <GlobalCreateMenu />
-          </div>
+        <div className="mission-scroll">
+          {sections.filter(section => section.id === "focus").map(renderSection)}
+          <QuickAccessSection compact={compact} pages={displayed} options={options} addPage={addPage} removePage={removePage}
+            onNavigate={closeAfterNavigation} onVisitPage={visitSavedPage} pickerOpen={pickerOpen} setPickerOpen={setPickerOpen} category={category} setCategory={setCategory} data={data} />
+          <RecentlyVisitedSection compact={compact} pages={recentlyVisited} favorites={displayed} onNavigate={closeAfterNavigation} onVisitPage={visitSavedPage}
+            togglePin={page => {
+              const pin = pages.find(pin => targetsSamePage(pin, page));
+              if (pin) removePage(pin.id);
+              else addPage(page);
+            }} />
+          <div className="mission-divider">{!compact && <span>Workspace</span>}</div>
+          {sections.filter(section => section.id === "parliament" || section.id === "office").map(renderSection)}
+          {compact ? (
+            <Popover open={railResearchOpen} onOpenChange={setRailResearchOpen}>
+              <PopoverTrigger className="mission-icon" aria-label="Recherche" title="Recherche" data-active={activeResearch}>
+                <Compass aria-hidden="true" />
+              </PopoverTrigger>
+              <PopoverContent side="right" align="start" aria-label="Recherche" className="mission-popover w-56 p-2">
+                <div className="mission-section-heading"><h2>Recherche</h2></div>
+                {research.items.map(item => renderItem(item, false))}
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <Collapsible open={researchOpen} onOpenChange={setResearchOpen}>
+              <h2>
+                <CollapsibleTrigger className="mission-section-heading mission-research" aria-controls={researchId}>
+                  Recherche <ChevronRight aria-hidden="true" className="size-4" />
+                </CollapsibleTrigger>
+              </h2>
+              <CollapsibleContent id={researchId} className="mission-research-content">
+                {research.items.map(item => renderItem(item))}
+              </CollapsibleContent>
+            </Collapsible>
+          )}
         </div>
-
-        {/* Panel Content */}
-        {activePanel === 'home' && renderHomePanel()}
-        {activePanel === 'appointments' && renderAppointmentsPanel()}
-        {activePanel === 'casefiles' && renderCasefilesPanel()}
-
-        <div className="mx-3 flex shrink-0 items-center justify-between gap-2 border-t border-border py-3">
-          <UserStatusSelector showOnlineUsers>
-            <button
-              className="relative size-10 shrink-0 rounded-full flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors"
-              aria-label={statusDisplay ? `Profil · ${statusDisplay.label}` : "Profil"}
-            >
-              <Avatar className="size-9">
-                <AvatarImage src={userProfile?.avatar_url || undefined} />
-                <AvatarFallback className="text-xs">
-                  {userProfile?.display_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              {statusDisplay && (
-                <span
-                  className="absolute bottom-0 right-0 size-3.5 rounded-full border-2 border-white"
-                  style={{ backgroundColor: statusDisplay.color }}
-                  title={statusDisplay.label}
-                />
-              )}
-            </button>
-          </UserStatusSelector>
-          <div className="flex items-center gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setHelpDialogOpen(true)}
-                  className="size-8 rounded-full flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors focus-visible:bg-[hsl(var(--nav-hover))]"
-                  aria-label="Information"
-                >
-                  <HelpCircle className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">Information</TooltipContent>
-            </Tooltip>
-
-            {hasAdminAccess && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => handleNavigationClick('administration')}
-                    className="size-8 rounded-full flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors focus-visible:bg-[hsl(var(--nav-hover))]"
-                    aria-label="Admin"
-                  >
-                    <Shield className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">Admin</TooltipContent>
-              </Tooltip>
-            )}
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="size-8 rounded-full flex items-center justify-center hover:bg-[hsl(var(--nav-hover))] transition-colors focus-visible:bg-[hsl(var(--nav-hover))]" aria-label="Einstellungen">
-                  <Settings className="h-3.5 w-3.5 text-[hsl(var(--nav-muted))]" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" side="right" align="end">
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium">{userProfile?.display_name || 'Benutzer'}</p>
-                    <p className="text-xs text-muted-foreground">{user?.email}</p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <div className="flex items-center justify-between gap-3 px-2 py-2">
-                  <span className="text-label">Dunkelmodus</span>
-                  <SunflowerThemeToggle />
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => { onSectionChange('profile-edit'); setActivePanel('home'); }}>
-                  <User className="mr-2 h-4 w-4" />
-                  Profil bearbeiten
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { onSectionChange('settings'); setActivePanel('home'); }}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Einstellungen
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Abmelden
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
+        <SidebarFooter compact={compact} ghost={ghost} profile={data.userProfile} hasAdminAccess={access.hasAdminAccess}
+          isAdminPage={activeSection === "administration"} onAdmin={() => { closeAfterNavigation(); navigateTo(adminDestination); }}
+          onNavigate={closeAfterNavigation} onFollowHelpHint={onFollowHelpHint} onToggle={onToggle} />
       </nav>
-      
-      <HelpDialog open={helpDialogOpen} onOpenChange={setHelpDialogOpen} onFollowHint={onFollowHelpHint} />
     </TooltipProvider>
   );
 }

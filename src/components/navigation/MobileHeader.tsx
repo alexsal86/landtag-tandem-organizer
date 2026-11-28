@@ -1,15 +1,16 @@
+import { activeNavigationSection, sectionForPath } from "./navigationConfig";
 import { GlobalCreateMenu } from "@/components/layout/GlobalCreateMenu";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { LogOut, Menu, Settings, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { AppNavigation } from "@/components/navigation/AppNavigation";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
-import { useTenant } from "@/hooks/useTenant";
+import { useAppSettings } from "@/hooks/useAppSettings";
+import { useSidebarProfile } from "./appNavigation/useNavPanelData";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,65 +20,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function MobileHeader() {
-  const isMobile = useIsMobile();
+  return useIsMobile() ? <MobileNavigation /> : null;
+}
+
+function MobileNavigation() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
-  const { currentTenant } = useTenant();
 
-  // Derive active section from URL path (same logic as Index.tsx)
-  const activeSection = (() => {
-    const path = location.pathname.split('/')[1] || 'dashboard';
-    return path || 'dashboard';
-  })();
-  const [appSettings, setAppSettings] = useState({
-    app_name: "LandtagsOS",
-    app_logo_url: ""
-  });
+  const activeSection = sectionForPath(location.pathname);
+  const appSettings = useAppSettings();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [userProfile, setUserProfile] = useState<{ display_name?: string | null; avatar_url?: string | null } | null>(null);
-
-  useEffect(() => {
-    const loadSettings = async () => {
-      const { data: settings } = await supabase
-        .from('app_settings')
-        .select('setting_key, setting_value')
-        .in('setting_key', ['app_name', 'app_logo_url']);
-
-      if (settings) {
-        const settingsMap = settings.reduce((acc: Record<string, any>, item: Record<string, any>) => {
-          acc[item.setting_key] = item.setting_value || '';
-          return acc;
-        }, {} as Record<string, string>);
-
-        setAppSettings({
-          app_name: settingsMap.app_name || "LandtagsOS",
-          app_logo_url: settingsMap.app_logo_url || ""
-        });
-      }
-    };
-
-    loadSettings();
-  }, []);
-
-  useEffect(() => {
-    const loadProfile = async () => {
-      if (user && currentTenant?.id) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('display_name, avatar_url')
-          .eq('user_id', user.id)
-          .eq('tenant_id', currentTenant.id)
-          .maybeSingle();
-
-        setUserProfile(profile);
-      }
-    };
-
-    loadProfile();
-  }, [user, currentTenant]);
-
-  if (!isMobile) return null;
+  const { data: userProfile } = useSidebarProfile();
 
   const handleSignOut = async () => {
     await signOut();
@@ -110,13 +64,10 @@ export function MobileHeader() {
                   </Button>
                 </SheetClose>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="min-h-0 flex-1">
                 <AppNavigation
-                  activeSection={activeSection}
-                  onSectionChange={(section) => {
-                    navigate(section === 'dashboard' ? '/' : `/${section}`);
-                    setMobileNavOpen(false);
-                  }}
+                  activeSection={activeNavigationSection(activeSection)}
+                  onNavigate={() => setMobileNavOpen(false)}
                   isMobile={true}
                   onFollowHelpHint={() => setMobileNavOpen(false)}
                 />

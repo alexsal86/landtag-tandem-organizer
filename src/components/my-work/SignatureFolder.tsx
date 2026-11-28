@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { FileText, Mic, MicOff } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { ErrorState, LoadingState } from "@/components/ui-patterns";
@@ -12,8 +12,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { notify } from "@/lib/notify";
 import { WebSpeechToTextAdapter } from "@/lib/speechToTextAdapter";
 import { cn } from "@/lib/utils";
-import { STALE_TIME } from "@/lib/query-cache";
-import { decideFolderEntry, folderDate, folderTypes, loadSignatureFolder, type FolderEntry, type FolderType } from "./signatureFolderData";
+import { decideFolderEntry, folderDate, folderTypes, signatureFolderKey, useSignatureFolderQuery, type FolderEntry, type FolderType } from "./signatureFolderData";
 
 const pill = "min-h-10 rounded-full px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2";
 const compactPill = "inline-flex h-7 items-center rounded-full px-3 text-[13px] font-medium focus-visible:outline-2 focus-visible:outline-offset-2";
@@ -33,19 +32,16 @@ function SignatureFolderContent({ tenantId, userId }: { tenantId: string; userId
   const qc = useQueryClient();
   const listId = useId();
   const header = useRef<HTMLButtonElement>(null);
-  const queryKey = ["signature-folder", tenantId, userId];
-  // Buchstaben, Presse und Social sind nicht in der Realtime-Publication, hier greift also keine
-  // Subscription. Deshalb weiterhin ein Hintergrund-Intervall, aber im Rhythmus der Büroarbeit
-  // statt alle 30 s: es pausiert bei verdecktem Tab, und die Rückkehr in den Tab lädt zusätzlich
-  // frisch. Eigene Entscheidungen invalidieren den Key ohnehin sofort.
-  const query = useQuery({
-    queryKey,
-    queryFn: () => loadSignatureFolder(tenantId, userId),
-    staleTime: STALE_TIME.LIST_WITH_REALTIME,
-    refetchInterval: STALE_TIME.LIST_WITH_REALTIME,
-    refetchOnWindowFocus: true,
-  });
+  const queryKey = signatureFolderKey(tenantId, userId);
+  const query = useSignatureFolderQuery(tenantId, userId);
+  const { hash } = useLocation();
   const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    if (hash !== "#unterschriftenmappe") return;
+    setVisible(true);
+    header.current?.focus({ preventScroll: true });
+    header.current?.scrollIntoView?.({ block: "nearest" });
+  }, [hash]);
   const [filter, setFilter] = useState<FolderType | "all">("all");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [read, setRead] = useState<Set<string>>(() => new Set());
@@ -62,7 +58,7 @@ function SignatureFolderContent({ tenantId, userId }: { tenantId: string; userId
   return (
     <Card className="min-w-0 gap-0 rounded-dashboard-card shadow-dashboard-card">
       <CardHeader className="px-4 pb-3 pt-5 sm:px-5">
-        <h3 className="text-card-title">
+        <h3 id="unterschriftenmappe" className="text-card-title">
           <button type="button" ref={header} className="flex w-full items-center gap-2 text-left" aria-expanded={visible}
             aria-controls={listId} onClick={() => { setVisible(!visible); setExpanded(null); }}>
             <FileText aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />

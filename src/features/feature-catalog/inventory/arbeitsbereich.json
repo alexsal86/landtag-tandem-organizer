@@ -158,25 +158,26 @@
       "id": "mywork.quick-access",
       "subarea": "Meine Arbeit",
       "name": "Schnellzugriff und zuletzt besuchte Seiten",
-      "description": "Merkt sich zuletzt besuchte Bereiche und stellt konfigurierbare Schnellzugriffe in der Navigation bereit.",
+      "description": "Zeigt persönliche Favoriten und optional zuletzt besuchte Ziele vor der Workspace-Navigation. Seiten und Fachobjekte lassen sich anheften und entfernen. Bestehende Favoriten behalten Reihenfolge und Ziel.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
-      "testResult": "nicht-ausgefuehrt",
+      "coverage": "integration",
+      "testResult": "bestanden",
       "evidence": [
         "src/hooks/useQuickAccessPages.ts",
         "src/hooks/useRecentlyVisited.ts",
-        "src/components/shared/QuickAccessMenuItem.tsx"
+        "src/components/shared/QuickAccessMenuItem.tsx",
+        "src/components/navigation/appNavigation/useSavedNavigation.ts"
       ],
       "components": [
+        "src/components/navigation/appNavigation/QuickAccessSection.tsx",
         "src/components/shared/QuickAccessMenuItem.tsx"
       ],
       "hooks": [
         "src/hooks/useQuickAccessPages.ts",
         "src/hooks/useRecentlyVisited.ts",
-        "src/hooks/useNavCollapse.ts",
-        "src/hooks/useNavWidth.ts"
+        "src/components/navigation/appNavigation/useSavedNavigation.ts"
       ],
       "tables": [
         "user_navigation_visits",
@@ -187,13 +188,69 @@
         "bueroleitung",
         "mitarbeiter",
         "praktikant"
+      ],
+      "integrationTests": [
+        "src/components/navigation/AppNavigation.test.tsx"
+      ],
+      "limitations": [
+        "Bestehende Browser-Favoriten haben teilweise keine Konto- oder Mandantenmetadaten. Gespeicherte Fachobjekte sind im aktuellen Mandanten nur sichtbar, wenn sie dort gelesen werden dürfen."
+      ]
+    },
+    {
+      "id": "mywork.personal-sidebar",
+      "subarea": "Navigation",
+      "name": "Persönliche Sidebar und Focus Mode",
+      "description": "Bündelt persönliche Aufgaben und fällige Vorgänge, die Unterschriftenmappe und den nächsten Termin unter Mein Tag. Unterstützt die normale, kompakte und überlagernde Sidebar mit gespeicherter Breite und Moduswahl.",
+      "category": "technisch",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "integration",
+      "testResult": "bestanden",
+      "evidence": [
+        "src/components/navigation/AppNavigation.tsx",
+        "src/components/navigation/navigationConfig.ts",
+        "src/components/navigation/appNavigation/DesktopSidebar.tsx"
+      ],
+      "components": [
+        "src/components/navigation/appNavigation/FocusSummary.tsx",
+        "src/components/navigation/appNavigation/SidebarFooter.tsx",
+        "src/components/navigation/HelpDialog.tsx",
+        "src/components/settings/SidebarPreferencesCard.tsx"
+      ],
+      "hooks": [
+        "src/components/navigation/appNavigation/useFocusSummary.ts",
+        "src/hooks/useNavWidth.ts",
+        "src/hooks/useUserPreference.ts"
+      ],
+      "tables": [
+        "user_preferences",
+        "tasks",
+        "task_assignees",
+        "case_items",
+        "appointments",
+        "external_events"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "unitTests": [
+        "src/components/navigation/appNavigation/useFocusSummary.test.ts"
+      ],
+      "integrationTests": [
+        "src/components/navigation/AppNavigation.test.tsx"
+      ],
+      "limitations": [
+        "Die Freigabeanzeige basiert auf der Unterschriftenmappe und ist in der Abgeordnetenansicht für tatsächlich Abgeordnete verfügbar. Matrix-Ungelesenstände zählen getrennt."
       ]
     },
     {
       "id": "mywork.navigation-previews",
       "subarea": "Navigation",
       "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
-      "description": "Zeigt Vorschauen mit dem nächsten Termin samt Briefingstatus, einer offenen Aufgabe mit Frist und Zuständigkeit, einer kürzlich aktualisierten Fallakte, einem ungelesenen Chat oder einem Kontakt mit Bezug zum nächsten Termin oder einer Fallakte. Verlinkt den jeweiligen Eintrag und die Unterbereiche.",
+      "description": "Öffnet kontextbezogene Vorschauen für Termine und Briefings, Aufgaben, Fallakten, Matrix-Chats und Kontakte. Die Einträge verlinken direkt auf die vorhandenen Fachziele.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
@@ -224,10 +281,9 @@
         "contacts"
       ],
       "limitations": [
-        "In der Desktop-Navigation per Maus oder Pfeil nach rechts verfügbar. Die Terminvorschau blickt fünf Tage voraus und die Aktenvorschau berücksichtigt eigene oder zugewiesene Fallakten.",
-        "Chat-Hervorhebungen stammen von Matrix. Die Vorschau zeigt Raumnamen und Zähler. Der zuletzt geöffnete Chat wird für die aktuelle Sitzung gemerkt.",
-        "Ohne Kontakt am nächsten Termin oder in der jüngsten eigenen oder zugewiesenen Fallakte wird ein eigener Favorit angezeigt.",
-        "Kein Selbsttest: die Vorschauen sind ein reiner Oberflächenpfad der Desktop-Navigation. Geprüft werden nur die zugrunde liegenden Datensätze in den Szenarien der jeweiligen Bereiche."
+        "Die Vorschauen stehen über die Zeilenaktionen auf Desktop und Touch zur Verfügung. Die Liste im Kalender-Popover blickt fünf Tage voraus. Der nächste Termin in Mein Tag kann auch danach liegen.",
+        "Matrix-Hervorhebungen priorisieren den Chat für die Vorschau. Ohne ungelesenen Raum wird der zuletzt geöffnete Chat der Sitzung angezeigt.",
+        "Die Fallakten-Vorschau berücksichtigt eigene oder zugewiesene Akten. Ohne passenden Kontakt wird ein persönlicher Kontaktfavorit verwendet."
       ]
     },
     {
@@ -337,16 +393,17 @@
       "id": "search.global",
       "subarea": "Suche",
       "name": "Globale Suche und Befehlspalette",
-      "description": "Durchsucht Kontakte, Aufgaben, Dokumente und weitere Objekte über eine Befehlspalette, öffnet Treffer über eine zentrale Ziel-Registry und protokolliert Suchanfragen für die Auswertung.",
+      "description": "Findet erlaubte Navigationsziele und vorhandene Erstellungsaktionen über deutsche Begriffe und Teilwörter. Die Inhaltssuche behält Filter, Ziel-Registry und Suchauswertung.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
-      "coverage": "keine",
-      "testResult": "nicht-ausgefuehrt",
+      "coverage": "integration",
+      "testResult": "bestanden",
       "evidence": [
         "src/components/search/GlobalSearchCommand.tsx",
         "src/components/search/postgrestSearch.ts",
-        "src/lib/appTargets.ts"
+        "src/lib/appTargets.ts",
+        "src/components/layout/globalCreateActions.ts"
       ],
       "components": [
         "src/components/search/GlobalSearchCommand.tsx",
@@ -354,7 +411,8 @@
       ],
       "services": [
         "src/components/search/postgrestSearch.ts",
-        "src/lib/appTargets.ts"
+        "src/lib/appTargets.ts",
+        "src/components/navigation/navigationConfig.ts"
       ],
       "tables": [
         "search_analytics"
@@ -373,6 +431,10 @@
         "Die Suche nutzt PostgREST-Abfragen je Entität; eine vollständige Liste der durchsuchten Tabellen ist nicht zentral deklariert.",
         "Sprungziele sind zentral in appTargets.ts hinterlegt; neue Trefferarten und Quick-Access-Ziele müssen dort ergänzt werden.",
         "Kategorie- und Statusfilter gelten nur im gewählten Bereich, weil die Wertelisten je Bereich unterschiedlich sind."
+      ],
+      "integrationTests": [
+        "src/components/search/GlobalSearchCommand.test.tsx",
+        "src/components/layout/GlobalCreateMenu.test.tsx"
       ]
     },
     {

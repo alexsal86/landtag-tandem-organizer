@@ -103,12 +103,12 @@ export const AppRoutes = () => (
       <Route path="/" element={<Navigate to="/mywork" replace />} />
       <Route path="/dashboard/*" element={<Navigate to="/mywork?tab=dashboard" replace />} />
       <Route path="/contacts/new" element={<Navigate to="/contacts?action=new" replace />} />
+      <Route path="/contacts/import" element={<ImportContacts />} />
+      <Route path="/contacts/:id/edit" element={<EditContact />} />
       <Route element={<StandaloneWorkspace />}>
         <Route path="/contacts/:id" element={<ContactDetail />} />
-        <Route path="/contacts/:id/edit" element={<EditContact />} />
         <Route path="/tasks/new" element={<CreateTask />} />
         <Route path="/tasks/archive" element={<TaskArchiveView />} />
-        <Route path="/contacts/import" element={<ImportContacts />} />
         <Route path="*" element={<NotFound />} />
       </Route>
       <Route path="/contacts/netzwerk" element={<Index />} />

@@ -2,11 +2,8 @@ import { useState, useEffect } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { OPEN_GLOBAL_QUICK_NOTE } from "@/features/quick-notes/globalCapture";
 
-const GlobalSearchCommand = lazyWithRetry(() =>
-  import("@/components/search/GlobalSearchCommand").then((m) => ({
-    default: m.GlobalSearchCommand,
-  })),
-);
+import { GlobalSearchCommand } from "@/components/search/GlobalSearchCommand";
+
 const GlobalQuickNoteDialog = lazyWithRetry(() =>
   import("@/components/search/GlobalQuickNoteDialog").then((m) => ({
     default: m.GlobalQuickNoteDialog,

@@ -1,5 +1,6 @@
+import type { RefObject } from "react";
 import { HelpCircle } from "lucide-react";
-import { matchPath, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { EMPLOYEE_MEETING_HELP_CONTENT, MYWORK_HELP_CONTENT } from "@/config/helpContent";
 import {
   Dialog,
@@ -13,14 +14,15 @@ interface HelpDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onFollowHint?: () => void;
+  returnFocusRef?: RefObject<HTMLButtonElement | null>;
 }
 
-export function HelpDialog({ open, onOpenChange, onFollowHint }: HelpDialogProps) {
+export function HelpDialog({ open, onOpenChange, onFollowHint, returnFocusRef }: HelpDialogProps) {
   const { pathname, search } = useLocation();
   const tab = new URLSearchParams(search).get("tab") ?? "dashboard";
-  const pageHelp = matchPath("/mywork", pathname) && Object.hasOwn(MYWORK_HELP_CONTENT, tab)
+  const pageHelp = /^\/mywork\/?$/i.test(pathname) && Object.hasOwn(MYWORK_HELP_CONTENT, tab)
     ? MYWORK_HELP_CONTENT[tab]
-    : matchPath("/employee-meeting/:meetingId", pathname) ? EMPLOYEE_MEETING_HELP_CONTENT : undefined;
+    : /^\/employee-meeting\/[^/]+\/?$/i.test(pathname) ? EMPLOYEE_MEETING_HELP_CONTENT : undefined;
 
   const highlightTarget = (targetId: string) => {
     const target = document.querySelector<HTMLElement>(`[data-help-id="${targetId}"]`);
@@ -29,7 +31,7 @@ export function HelpDialog({ open, onOpenChange, onFollowHint }: HelpDialogProps
     onOpenChange(false);
     onFollowHint?.();
     requestAnimationFrame(() => {
-      target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      target.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center", inline: "nearest" });
       target.classList.add("ring-2", "ring-primary", "ring-offset-2", "animate-pulse");
       window.setTimeout(() => {
         target.classList.remove("ring-2", "ring-primary", "ring-offset-2", "animate-pulse");
@@ -39,7 +41,12 @@ export function HelpDialog({ open, onOpenChange, onFollowHint }: HelpDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md" onCloseAutoFocus={event => {
+        if (returnFocusRef?.current?.isConnected) {
+          event.preventDefault();
+          returnFocusRef.current.focus();
+        }
+      }}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <HelpCircle className="h-5 w-5" />
@@ -102,7 +109,7 @@ export function HelpDialog({ open, onOpenChange, onFollowHint }: HelpDialogProps
             <h4 className="font-medium text-sm mb-2">Navigation</h4>
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>• Klicken Sie auf ein Menüsymbol, um zur entsprechenden Seite zu wechseln.</p>
-              <p>• Rote Badges zeigen neue oder ungelesene Elemente an.</p>
+              <p>• Zähler zeigen persönliche Aufgaben, Freigaben oder ungelesene Chatnachrichten an. Die Uhrzeit verweist auf den nächsten Termin.</p>
               <p>• In der Kartenansicht können Sie mit Hover weitere Aktionen sehen.</p>
             </div>
           </div>

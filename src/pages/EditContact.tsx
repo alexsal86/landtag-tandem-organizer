@@ -17,8 +17,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { Navigation } from "@/components/navigation/Navigation";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { DesktopSidebar } from "@/components/navigation/appNavigation/DesktopSidebar";
+import { MobileHeader } from "@/components/navigation/MobileHeader";
+import { WorkspaceToolbar } from "@/components/layout/WorkspaceToolbar";
 import { ImageCropper } from "@/components/ui/ImageCropper";
 import type { ContactCategory, ContactPriority, EditableContact } from "@/types/contact";
 import { notify } from "@/lib/notify";
@@ -243,20 +244,14 @@ export default function EditContact() {
       .join("")
       .toUpperCase();
 
-  const handleSectionChange = (section: string) => {
-    const path = section === "dashboard" ? "/" : `/${section}`;
-    navigate(path);
-  };
-
   return (
     <>
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full bg-background">
-          <Navigation
-            activeSection="contacts"
-            onSectionChange={handleSectionChange}
-          />
-          <main id="main-content" className="flex-1 p-6" tabIndex={-1}>
+      <div className="flex h-app w-full bg-background">
+        <DesktopSidebar activeSection="contacts" />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <MobileHeader />
+          <WorkspaceToolbar />
+          <main id="main-content" className="min-h-0 flex-1 overflow-y-auto p-6" tabIndex={-1}>
             <div className="max-w-4xl mx-auto">
               <div className="flex items-center mb-6">
                 <Button variant="outline" onClick={() => navigate("/contacts")}>
@@ -491,7 +486,7 @@ export default function EditContact() {
             </div>
           </main>
         </div>
-      </SidebarProvider>
+      </div>
 
       {imageToEdit && (
         <ImageCropper

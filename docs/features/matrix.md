@@ -11,8 +11,9 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `mywork.dashboard.today-priorities` | arbeitsbereich | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 1 | 0 | 0 | 0 | nein |
 | `mywork.tabs` | arbeitsbereich | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `mywork.dashboard` | arbeitsbereich | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 2 | 0 | 0 | 0 | ja |
-| `mywork.quick-access` | arbeitsbereich | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `mywork.quick-access` | arbeitsbereich | fachlich | implementiert | UI | Integrationstest | bestanden | 0 | 0 | 1 | 0 | nein |
 | `mobile.app` | arbeitsbereich | fachlich | teilweise | ohne Einbindung | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
+| `mywork.personal-sidebar` | arbeitsbereich | technisch | implementiert | UI | Integrationstest | bestanden | 0 | 1 | 1 | 0 | nein |
 | `mywork.navigation-previews` | arbeitsbereich | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `profile.edit` | arbeitsbereich | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
 | `quicknotes.checklists` | arbeitsbereich | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
@@ -20,7 +21,7 @@ Die Spalten zählen **zugeordnete** Prüfungen, nicht bestandene Läufe. „Erge
 | `quicknotes.drag-sort` | arbeitsbereich | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 1 | 0 | 0 | nein |
 | `quicknotes.offline` | arbeitsbereich | fachlich | implementiert | UI | Unit-Test | unbekannt | 0 | 2 | 0 | 0 | nein |
 | `quicknotes.manage` | arbeitsbereich | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | ja |
-| `search.global` | arbeitsbereich | fachlich | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | nein |
+| `search.global` | arbeitsbereich | fachlich | implementiert | UI | Integrationstest | bestanden | 0 | 0 | 2 | 0 | nein |
 | `platform.auth` | arbeitsbereich | sicherheit | implementiert | UI | kein Test | nicht-ausgefuehrt | 0 | 0 | 0 | 0 | ja |
 | `tasks.archive` | aufgaben | fachlich | implementiert | UI | Selbsttest | nicht-ausgefuehrt | 1 | 1 | 0 | 0 | ja |
 | `tasks.complete` | aufgaben | fachlich | implementiert | rollenabhängig | Selbsttest | nicht-ausgefuehrt | 2 | 1 | 0 | 0 | ja |

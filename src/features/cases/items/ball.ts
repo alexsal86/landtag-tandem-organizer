@@ -104,6 +104,13 @@ export function countTriage(items: TriageItem[], userId: string | null, now: Dat
   return Object.fromEntries(filters.map((f) => [f, items.filter((i) => matchesTriage(i, f, userId, now)).length])) as Record<TriageFilter, number>;
 }
 
+export function isPersonalCaseAction(item: TriageItem & { status: string }, userId: string, now = new Date()) {
+  return item.status !== "erledigt" && item.status !== "archiviert"
+    && matchesTriage(item, "office", userId, now)
+    && !matchesTriage(item, "resubmission", userId, now)
+    && (item.next_action_assignee_id ?? item.owner_user_id) === userId;
+}
+
 export const TRIAGE_FILTERS: { value: TriageFilter; label: string; hint: string }[] = [
   { value: "mine", label: "Mein Ball", hint: "Vorgänge, die du bearbeitest oder bei denen dir der nächste Schritt zugewiesen ist" },
   { value: "resubmission", label: "Wiedervorlage", hint: "Vorgänge mit einem festgelegten Schritt und einer Frist nach heute" },

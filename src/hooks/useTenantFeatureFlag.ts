@@ -46,18 +46,18 @@ export function useTenantFeatureFlag(key: string): { enabled: boolean; isLoading
 
 /**
  * Prüft beliebige Modulschalter aus derselben Abfrage (für Listen wie Reiter).
- * Während des Ladens und ohne Eintrag gilt ein Modul als aktiv, damit Deep-Links
- * nicht vorübergehend auf den ersten Reiter zurückfallen.
+ * Der Fallback gilt, solange die Modulwerte fehlen. Ein geladener Zustand ohne
+ * Eintrag bedeutet, dass das Modul aktiv ist.
  */
-export function useTenantModuleGate(): (key: string) => boolean {
+export function useTenantModuleGate(fallback = true): (key: string) => boolean {
   const { data, isLoading } = useTenantFeatureFlagsMap();
   return useCallback(
     (key: string) => {
-      if (isLoading || !data) return true;
+      if (isLoading || !data) return fallback;
       const entry = data.get(key);
       return entry ? entry.enabled : true;
     },
-    [data, isLoading],
+    [data, isLoading, fallback],
   );
 }
 

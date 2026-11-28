@@ -6,11 +6,12 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 
 ## Funktionen je Rolle
 
-### `abgeordneter` — 190 Funktionen
+### `abgeordneter` — 191 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
+- `mywork.personal-sidebar` — Persönliche Sidebar und Focus Mode
 - `notifications.inbox` — Benachrichtigungen lesen und als gelesen markieren
 - `notifications.preferences` — Benachrichtigungseinstellungen und Stummschaltung
 - `search.global` — Globale Suche und Befehlspalette
@@ -199,12 +200,13 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 
-### `bueroleitung` — 235 Funktionen
+### `bueroleitung` — 236 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
+- `mywork.personal-sidebar` — Persönliche Sidebar und Focus Mode
 - `notifications.inbox` — Benachrichtigungen lesen und als gelesen markieren
 - `notifications.preferences` — Benachrichtigungseinstellungen und Stummschaltung
 - `search.global` — Globale Suche und Befehlspalette
@@ -437,12 +439,13 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 - `knowledge.management` — Wissensverwaltung
 
-### `mitarbeiter` — 195 Funktionen
+### `mitarbeiter` — 196 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
+- `mywork.personal-sidebar` — Persönliche Sidebar und Focus Mode
 - `notifications.inbox` — Benachrichtigungen lesen und als gelesen markieren
 - `notifications.preferences` — Benachrichtigungseinstellungen und Stummschaltung
 - `search.global` — Globale Suche und Befehlspalette
@@ -635,12 +638,13 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 - `knowledge.management` — Wissensverwaltung
 
-### `praktikant` — 43 Funktionen
+### `praktikant` — 44 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
 - `mywork.quick-access` — Schnellzugriff und zuletzt besuchte Seiten
+- `mywork.personal-sidebar` — Persönliche Sidebar und Focus Mode
 - `notifications.inbox` — Benachrichtigungen lesen und als gelesen markieren
 - `notifications.preferences` — Benachrichtigungseinstellungen und Stummschaltung
 - `search.global` — Globale Suche und Befehlspalette
@@ -1033,6 +1037,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `mywork.dashboard` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `mywork.dashboard.today-priorities` | `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `mywork.navigation-previews` | Keine besondere Rolle deklariert |
+| `mywork.personal-sidebar` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `mywork.quick-access` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `mywork.tabs` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |
 | `news.articles` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant` |

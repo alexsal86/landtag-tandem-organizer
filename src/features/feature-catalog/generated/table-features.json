@@ -310,6 +310,11 @@
       "id": "mywork.navigation-previews",
       "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
       "area": "arbeitsbereich"
+    },
+    {
+      "id": "mywork.personal-sidebar",
+      "name": "Persönliche Sidebar und Focus Mode",
+      "area": "arbeitsbereich"
     }
   ],
   "archived_meeting_protocol_tasks": [
@@ -811,6 +816,11 @@
       "id": "meetings.agenda",
       "name": "Agenda führen",
       "area": "organisation"
+    },
+    {
+      "id": "mywork.personal-sidebar",
+      "name": "Persönliche Sidebar und Focus Mode",
+      "area": "arbeitsbereich"
     },
     {
       "id": "responsibilities.suggest",
@@ -2108,6 +2118,11 @@
     {
       "id": "mywork.navigation-previews",
       "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
+      "area": "arbeitsbereich"
+    },
+    {
+      "id": "mywork.personal-sidebar",
+      "name": "Persönliche Sidebar und Focus Mode",
       "area": "arbeitsbereich"
     }
   ],
@@ -3477,6 +3492,11 @@
   ],
   "task_assignees": [
     {
+      "id": "mywork.personal-sidebar",
+      "name": "Persönliche Sidebar und Focus Mode",
+      "area": "arbeitsbereich"
+    },
+    {
       "id": "tasks.assign",
       "name": "Aufgabe zuweisen",
       "area": "aufgaben"
@@ -3831,6 +3851,11 @@
     {
       "id": "mywork.navigation-previews",
       "name": "Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte",
+      "area": "arbeitsbereich"
+    },
+    {
+      "id": "mywork.personal-sidebar",
+      "name": "Persönliche Sidebar und Focus Mode",
       "area": "arbeitsbereich"
     },
     {
@@ -4218,6 +4243,11 @@
     }
   ],
   "user_preferences": [
+    {
+      "id": "mywork.personal-sidebar",
+      "name": "Persönliche Sidebar und Focus Mode",
+      "area": "arbeitsbereich"
+    },
     {
       "id": "mywork.quick-access",
       "name": "Schnellzugriff und zuletzt besuchte Seiten",

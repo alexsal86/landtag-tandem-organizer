@@ -1,11 +1,10 @@
-import React, { useState, useEffect, Suspense, useMemo, useCallback, startTransition } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { AppNavigation, getNavigationGroups } from "@/components/navigation/AppNavigation";
-import { prefetchRoute } from "@/lib/routePrefetch";
-import { useNavWidth } from "@/hooks/useNavWidth";
+import { DesktopSidebar } from "@/components/navigation/appNavigation/DesktopSidebar";
+import { activeNavigationSection, sectionForPath } from "@/components/navigation/navigationConfig";
 import { useDaySlipLayout } from "@/components/dayslip/DaySlipLayout";
 
 const NewsPage = lazyWithRetry(() => import("@/pages/NewsPage"));
@@ -52,22 +51,12 @@ import { Loader2 } from "lucide-react";
 import { MobileHeader } from "@/components/navigation/MobileHeader";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { cn } from "@/lib/utils";
-import { SubNavigation } from "@/components/layout/SubNavigation";
 import { WorkspaceToolbar } from "@/components/layout/WorkspaceToolbar";
 const CreateContact = lazyWithRetry(() => import("./CreateContact"));
 const NotFound = lazyWithRetry(() => import("./NotFound"));
 
 const Index = (): React.JSX.Element => {
-  const { width: navWidth, isResizing, startResize } = useNavWidth();
-  // Der angedockte Tageszettel nimmt rechts Platz weg, statt den Inhalt zu überdecken.
-  const daySlipLayout = useDaySlipLayout();
-  const daySlipReservedWidth = daySlipLayout?.reservedWidth ?? 0;
-  // Die tatsächliche Navigationsbreite (nicht ihr Mindestwert) bestimmt, wie viel
-  // Platz der Zettel beim Andocken wegnehmen darf.
-  const setDaySlipNavWidth = daySlipLayout?.setNavWidth;
-  useEffect(() => {
-    setDaySlipNavWidth?.(navWidth);
-  }, [setDaySlipNavWidth, navWidth]);
+  const daySlipReservedWidth = useDaySlipLayout()?.reservedWidth ?? 0;
   const { user, loading: authLoading } = useAuth();
   const { loading: tenantLoading, currentTenant } = useTenant();
   const navigate = useNavigate();
@@ -77,41 +66,17 @@ const Index = (): React.JSX.Element => {
   // Wait for both auth AND tenant to be loaded before rendering
   const loading = authLoading || (user && tenantLoading);
   
-  // Determine active section from URL
-  const getActiveSectionFromPath = (pathname: string): string => {
-    if (pathname === '/') return 'dashboard';
-    const pathSection = pathname.slice(1).split('/')[0];
-
-    if (pathSection === 'letters') {
-      return 'documents';
-    }
-
-    return pathSection || 'dashboard';
-  };
-  
-  // Derived from the current path instead of a state copy so a route change takes
-  // effect in the same render. Otherwise the previous section keeps rendering for
-  // one frame and can rewrite the new route's search params (e.g. its tab).
-  const activeSection = getActiveSectionFromPath(location.pathname);
+  const activeSection = sectionForPath(location.pathname);
   const isCalendar = activeSection === "calendar";
   const searchParams = new URLSearchParams(location.search);
   const isCreateContactRoute = activeSection === "contacts" && searchParams.get("action") === "new";
   const isContactsWorkspace = activeSection === "contacts" && subId !== "new" && !isCreateContactRoute;
   const isTeamPage = activeSection === "employee";
-  const hasSectionToolbar = activeSection === "mywork" || isTeamPage || (activeSection === "employee-meeting" && !subId);
+  const hasSectionToolbar = activeSection === "mywork" || activeSection === "notes" || isTeamPage || (activeSection === "employee-meeting" && !subId);
   
   // Dialog state management
   const [showCreateAppointmentDialog, setShowCreateAppointmentDialog] = useState<boolean>(false);
 
-  const navGroups = useMemo(() => getNavigationGroups(), []);
-  const activeGroup = useMemo(() =>
-    navGroups.find(g =>
-      g.subItems?.some(item => item.id === activeSection) ||
-      (g.route && g.route.slice(1) === activeSection) ||
-      g.id === activeSection
-    ),
-  [navGroups, activeSection]);
-  
   // Check URL parameters for dialog state
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
@@ -125,17 +90,8 @@ const Index = (): React.JSX.Element => {
   }, [location.search]);
 
 
-  // Handle navigation to sections – wrapped in startTransition for non-blocking rendering
-  const handleSectionChange = useCallback((section: string) => {
-    prefetchRoute(section);
-    const path = section === 'dashboard' ? '/' : `/${section}`;
-    startTransition(() => {
-      navigate(path);
-    });
-  }, [navigate]);
-  
   // Handle dialog close
-  const handleCreateAppointmentDialogChange = useCallback((open: boolean) => {
+  const handleCreateAppointmentDialogChange = (open: boolean) => {
     setShowCreateAppointmentDialog(open);
     if (!open) {
       const urlParams = new URLSearchParams(location.search);
@@ -144,7 +100,7 @@ const Index = (): React.JSX.Element => {
       const newUrl = newSearch ? `${location.pathname}?${newSearch}` : location.pathname;
       navigate(newUrl, { replace: true });
     }
-  }, [location.search, location.pathname, navigate]);
+  };
 
   useEffect(() => {
     // Allow access to knowledge section without authentication (demo mode)
@@ -298,38 +254,14 @@ const Index = (): React.JSX.Element => {
           "fixed inset-0 flex h-app bg-background overflow-hidden",
           // Bei angedocktem Tageszettel keine feste Breite setzen: mit left/right
           // bestimmt der Browser die Breite dann selbst und der Inhalt wird schmaler.
-          daySlipReservedWidth > 0 ? "w-auto" : "w-full",
-          isResizing && "select-none"
+          daySlipReservedWidth > 0 ? "w-auto" : "w-full"
         )}
         style={daySlipReservedWidth > 0 ? { right: daySlipReservedWidth } : undefined}
       >
-        <div className="hidden md:flex sticky top-0 h-app z-30" style={{ width: navWidth }}>
-          <AppNavigation 
-            activeSection={activeSection} 
-            onSectionChange={handleSectionChange}
-          />
-          {/* Resize Handle */}
-          <div
-            onMouseDown={startResize}
-            className={cn(
-              "w-1 cursor-col-resize hover:bg-primary/30 transition-colors shrink-0",
-              isResizing && "bg-primary/40"
-            )}
-          />
-        </div>
+        <DesktopSidebar activeSection={activeNavigationSection(activeSection)} />
         <div className="flex min-w-0 flex-col flex-1 h-app overflow-hidden">
           <MobileHeader />
-          {!hasSectionToolbar && (
-            <WorkspaceToolbar>
-              {activeGroup?.subItems && activeGroup.subItems.length > 1 && (
-                <SubNavigation
-                  items={activeGroup.subItems}
-                  activeItem={activeSection}
-                  onItemChange={handleSectionChange}
-                />
-              )}
-            </WorkspaceToolbar>
-          )}
+          {!hasSectionToolbar && <WorkspaceToolbar />}
           <main
             id="main-content"
             className={cn(

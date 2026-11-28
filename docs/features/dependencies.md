@@ -428,7 +428,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 |---|---|
 | `tasks` | arbeitsbereich, aufgaben, automation, dokumente, entscheidungen, mitarbeit, organisation, schnittstellen, termine, vorgaenge, wissen |
 | `notifications` | arbeitsbereich, aufgaben, entscheidungen, schnittstellen, termine, verwaltung, vorgaenge, wissen |
-| `case_items` | automation, mitarbeit, organisation, termine, verwaltung, vorgaenge |
+| `case_items` | arbeitsbereich, automation, mitarbeit, organisation, termine, verwaltung, vorgaenge |
 | `email_logs` | dokumente, entscheidungen, kommunikation, schnittstellen, termine, veranstaltungen |
 | `topics` | dokumente, kontakte, mitarbeit, organisation, vorgaenge, wissen |
 | `contacts` | arbeitsbereich, dokumente, kontakte, schnittstellen, verwaltung |
@@ -489,6 +489,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `sender_information` | dokumente, verwaltung |
 | `social_assets` | kommunikation, schnittstellen |
 | `system_health` | schnittstellen, verwaltung |
+| `task_assignees` | arbeitsbereich, aufgaben |
 | `task_categories` | aufgaben, verwaltung |
 | `task_decision_participants` | aufgaben, entscheidungen |
 | `task_snoozes` | arbeitsbereich, aufgaben |

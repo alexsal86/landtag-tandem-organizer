@@ -1,66 +1,66 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect } from "react";
 
-const NAV_WIDTH_KEY = 'nav-sidebar-width';
-/** Die Navigation nimmt nie weniger Platz ein; das Layout nutzt diesen Wert als festen Anteil. */
+const NAV_WIDTH_KEY = "nav-sidebar-width";
 export const NAV_MIN_WIDTH = 200;
-const DEFAULT_WIDTH = 220;
-const MIN_WIDTH = NAV_MIN_WIDTH;
+const DEFAULT_WIDTH = 272;
 const MAX_WIDTH = 400;
 
-export function useNavWidth() {
-  const [width, setWidthState] = useState<number>(() => {
-    try {
-      const stored = localStorage.getItem(NAV_WIDTH_KEY);
-      if (stored) {
-        const parsed = parseInt(stored, 10);
-        if (!isNaN(parsed) && parsed >= MIN_WIDTH && parsed <= MAX_WIDTH) return parsed;
-      }
-    } catch {}
-    return DEFAULT_WIDTH;
-  });
+function readWidth() {
+  try {
+    const stored = Number(localStorage.getItem(NAV_WIDTH_KEY));
+    if (stored >= NAV_MIN_WIDTH && stored <= MAX_WIDTH) return stored;
+  } catch { /* Storage may be disabled. */ }
+  return DEFAULT_WIDTH;
+}
 
+export function useNavWidth() {
+  const [width, setWidthState] = useState(readWidth);
   const [isResizing, setIsResizing] = useState(false);
   const widthRef = useRef(width);
-
-  const setWidth = useCallback((w: number) => {
-    const clamped = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, w));
-    widthRef.current = clamped;
-    setWidthState(clamped);
-  }, []);
+  const stopResizing = useRef<(() => void) | null>(null);
 
   const saveWidth = useCallback(() => {
-    try {
-      localStorage.setItem(NAV_WIDTH_KEY, String(widthRef.current));
-    } catch {}
+    try { localStorage.setItem(NAV_WIDTH_KEY, String(widthRef.current)); }
+    catch { /* The chosen width remains in memory. */ }
   }, []);
 
-  const startResize = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
+  const updateWidth = useCallback((value: number) => {
+    widthRef.current = Math.max(NAV_MIN_WIDTH, Math.min(MAX_WIDTH, value));
+    setWidthState(widthRef.current);
+  }, []);
+
+  const startResize = useCallback((event: React.MouseEvent) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    stopResizing.current?.();
     setIsResizing(true);
 
-    const onMouseMove = (ev: MouseEvent) => {
-      const newWidth = ev.clientX;
-      const clamped = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, newWidth));
-      widthRef.current = clamped;
-      setWidthState(clamped);
-    };
-
-    const onMouseUp = () => {
+    const previousCursor = document.body.style.cursor;
+    const previousSelection = document.body.style.userSelect;
+    const onMouseMove = (move: MouseEvent) => updateWidth(move.clientX);
+    const stop = () => {
+      stopResizing.current = null;
       setIsResizing(false);
-      try {
-        localStorage.setItem(NAV_WIDTH_KEY, String(widthRef.current));
-      } catch {}
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
+      saveWidth();
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", stop);
+      window.removeEventListener("blur", stop);
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousSelection;
     };
 
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-  }, []);
+    stopResizing.current = stop;
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", stop);
+    window.addEventListener("blur", stop);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, [saveWidth, updateWidth]);
 
-  return { width, setWidth, isResizing, startResize, MIN_WIDTH, MAX_WIDTH };
+  useEffect(() => () => stopResizing.current?.(), []);
+
+  return {
+    width, isResizing, startResize, minWidth: NAV_MIN_WIDTH, maxWidth: MAX_WIDTH,
+    setWidth: (value: number) => { updateWidth(value); saveWidth(); },
+  };
 }

@@ -21,9 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AppNavigation, getNavigationGroups } from "@/components/navigation/AppNavigation";
-import { AppHeader } from "@/components/layout/AppHeader";
-import { SubNavigation } from "@/components/layout/SubNavigation";
+import { DesktopSidebar } from "@/components/navigation/appNavigation/DesktopSidebar";
 import { MobileHeader } from "@/components/navigation/MobileHeader";
 import { WorkspaceToolbar } from "@/components/layout/WorkspaceToolbar";
 import { notify } from "@/lib/notify";
@@ -84,18 +82,6 @@ const CaseItemDetail = () => {
     : "timeline";
 
   const activeSection = "mywork";
-  const navGroups = useMemo(() => getNavigationGroups(), []);
-  const activeGroup = useMemo(
-    () =>
-      navGroups.find(
-        (g) =>
-          g.subItems?.some((item) => item.id === activeSection) ||
-          (g.route && g.route.slice(1) === activeSection) ||
-          g.id === activeSection,
-      ),
-    [navGroups],
-  );
-
   const mode = useMemo(() => {
     if (!caseItem) return "compact" as const;
     const scale = classifyCaseScale({
@@ -237,8 +223,6 @@ const CaseItemDetail = () => {
     await loadData();
   };
 
-  const handleSectionChange = (section: string) => navigate(section === "dashboard" ? "/" : `/${section}`);
-
   const handleFocusChange = (focus: string) => {
     const next = new URLSearchParams(searchParams);
     next.set("focus", focus);
@@ -249,18 +233,11 @@ const CaseItemDetail = () => {
   return (
     <>
       <div className="flex min-h-screen w-full bg-background overflow-hidden">
-        <div className="hidden md:block sticky top-0 h-screen z-30">
-          <AppNavigation activeSection={activeSection} onSectionChange={handleSectionChange} />
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col overflow-y-auto h-screen">
+        <DesktopSidebar activeSection={activeSection} />
+        <div className="flex min-w-0 flex-1 flex-col overflow-y-auto h-app">
           <div className="sticky top-0 z-40 bg-background">
-            <div className="hidden md:block"><AppHeader /></div>
             <MobileHeader />
-            <WorkspaceToolbar>
-              {activeGroup?.subItems && activeGroup.subItems.length > 1 && (
-                <SubNavigation items={activeGroup.subItems} activeItem={activeSection} onItemChange={handleSectionChange} />
-              )}
-            </WorkspaceToolbar>
+            <WorkspaceToolbar />
           </div>
 
           <main className="flex-1 p-4 md:p-6 bg-gradient-to-b from-background to-muted/20">

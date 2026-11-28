@@ -1,23 +1,16 @@
-import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { addDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import type { ActivePanel, NavPreviewGroup, QuickAccessAddCategory, UpcomingAppointmentItem } from "./types";
+import type { NavPreviewGroup, QuickAccessAddCategory, UpcomingAppointmentItem } from "./types";
 
 const STALE = 2 * 60 * 1000;
 
 interface UseNavPanelDataParams {
-  activePanel: ActivePanel;
   previewGroup: NavPreviewGroup | null;
   quickAccessPopoverOpen: boolean;
   quickAccessAddCategory: QuickAccessAddCategory | null;
-}
-
-interface UserProfile {
-  display_name?: string | null;
-  avatar_url?: string | null;
 }
 
 interface QuickAccessItem {
@@ -32,48 +25,45 @@ const sortByPreferredThenDate = (a: QuickAccessItem, b: QuickAccessItem) => {
   return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
 };
 
-export function useNavPanelData({
-  activePanel,
-  previewGroup,
-  quickAccessPopoverOpen,
-  quickAccessAddCategory,
-}: UseNavPanelDataParams) {
+export function useSidebarProfile() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const tenantId = currentTenant?.id;
+  return useQuery({
+    queryKey: ["nav-profile", tenantId, user?.id],
+    enabled: !!tenantId && !!user?.id,
+    staleTime: STALE,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles")
+        .select("display_name, avatar_url").eq("user_id", user!.id).eq("tenant_id", tenantId!).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
 
-  // User profile
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  useEffect(() => {
-    const loadProfile = async () => {
-      if (user && tenantId) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("display_name, avatar_url")
-          .eq("user_id", user.id)
-          .eq("tenant_id", tenantId)
-          .maybeSingle();
-        setUserProfile(profile ?? null);
-      }
-    };
-    void loadProfile();
-  }, [user, tenantId]);
+export function useNavPanelData({ previewGroup, quickAccessPopoverOpen, quickAccessAddCategory }: UseNavPanelDataParams) {
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
+  const tenantId = currentTenant?.id;
+  const { data: userProfile } = useSidebarProfile();
 
   // Upcoming appointments
-  const endDate = addDays(new Date(), 5);
   const { data: upcomingAppointments = [], isLoading: appointmentsLoading, isError: appointmentsError } = useQuery({
     queryKey: ["nav-upcoming-appointments", tenantId, user?.id],
     queryFn: async (): Promise<UpcomingAppointmentItem[]> => {
       if (!tenantId || !user?.id) return [];
-      const nowIso = new Date().toISOString();
+      const now = new Date();
+      const nowIso = now.toISOString();
       const [appointmentsResult, externalEventsResult] = await Promise.all([
         supabase
           .from("appointments")
           .select("id, title, start_time, end_time, location, is_all_day, briefing_status")
           .eq("tenant_id", tenantId)
           .eq("user_id", user.id)
-          .gte("start_time", nowIso)
-          .lte("start_time", endDate.toISOString())
+          .or("category.is.null,category.not.in.(birthday,blocked)")
+          .or("status.is.null,status.not.in.(cancelled,canceled)")
+          .or(`start_time.gte.${nowIso},and(start_time.lt.${nowIso},end_time.gt.${nowIso})`)
           .order("start_time", { ascending: true })
           .limit(20),
         supabase
@@ -83,8 +73,7 @@ export function useNavPanelData({
           )
           .eq("external_calendars.tenant_id", tenantId)
           .eq("external_calendars.user_id", user.id)
-          .gte("start_time", nowIso)
-          .lte("start_time", endDate.toISOString())
+          .or(`start_time.gte.${nowIso},and(start_time.lt.${nowIso},end_time.gt.${nowIso})`)
           .order("start_time", { ascending: true })
           .limit(20),
       ]);
@@ -117,11 +106,13 @@ export function useNavPanelData({
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
         .slice(0, 20);
     },
-    enabled: !!tenantId && !!user?.id && (activePanel === "appointments" || previewGroup === "calendar" || previewGroup === "people"),
+    enabled: !!tenantId && !!user?.id,
+    refetchInterval: 60_000,
     staleTime: STALE,
   });
 
-  const nextAppointment = upcomingAppointments.find((appointment) => Date.parse(appointment.start_time) >= Date.now());
+  const nextAppointment = upcomingAppointments.find((appointment) => Date.parse(appointment.start_time) >= Date.now())
+    ?? upcomingAppointments.find((appointment) => appointment.is_all_day && Date.parse(appointment.end_time ?? "") > Date.now());
   const briefingAppointmentId = nextAppointment?.briefingStatus && nextAppointment.briefingStatus !== "none"
     ? nextAppointment.id
     : undefined;
@@ -174,7 +165,7 @@ export function useNavPanelData({
 
   // Pending feedbacks
   const { data: pendingFeedbacks = [] } = useQuery({
-    queryKey: ["nav-pending-feedbacks", tenantId],
+    queryKey: ["nav-pending-feedbacks", tenantId, user?.id],
     queryFn: async () => {
       if (!tenantId || !user?.id) return [];
       const { data } = await supabase
@@ -186,13 +177,13 @@ export function useNavPanelData({
         .limit(10);
       return data || [];
     },
-    enabled: !!tenantId && !!user?.id && activePanel === "appointments",
+    enabled: !!tenantId && !!user?.id && previewGroup === "calendar",
     staleTime: STALE,
   });
 
   // Case files
   const { data: caseFiles = [], isLoading: caseFilesLoading, isError: caseFilesError } = useQuery({
-    queryKey: ["nav-casefiles", tenantId, user?.id, activePanel === "casefiles"],
+    queryKey: ["nav-casefiles", tenantId, user?.id],
     queryFn: async () => {
       if (!tenantId || !user?.id) return [];
       const { data, error } = await supabase
@@ -201,11 +192,11 @@ export function useNavPanelData({
         .eq("tenant_id", tenantId)
         .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`)
         .order("updated_at", { ascending: false })
-        .limit(activePanel === "casefiles" ? 30 : 1);
+        .limit(1);
       if (error) throw error;
       return data || [];
     },
-    enabled: !!tenantId && !!user?.id && (activePanel === "casefiles" || previewGroup === "files" || previewGroup === "people"),
+    enabled: !!tenantId && !!user?.id && (previewGroup === "files" || previewGroup === "people"),
     staleTime: STALE,
   });
 
@@ -259,7 +250,7 @@ export function useNavPanelData({
         .limit(40);
       if (error) throw error;
       return (data || [])
-        .map((item: Record<string, any>) => ({
+        .map((item) => ({
           id: item.id,
           label: item.subject?.trim() || "Vorgang ohne Betreff",
           preferred: item.owner_user_id === user.id || item.user_id === user.id,
@@ -288,7 +279,7 @@ export function useNavPanelData({
         .limit(40);
       if (error) throw error;
       return (data || [])
-        .map((item: Record<string, any>) => ({
+        .map((item) => ({
           id: item.id,
           label: item.title?.trim() || "Dokument ohne Titel",
           preferred: item.user_id === user.id,
@@ -326,11 +317,11 @@ export function useNavPanelData({
       if (collaboratorsResult.error) throw collaboratorsResult.error;
       const collaboratorIds = new Set(
         (collaboratorsResult.data || []).map(
-          (entry: Record<string, any>) => entry.event_planning_id
+          (entry) => entry.event_planning_id
         )
       );
       return (planningsResult.data || [])
-        .map((p: Record<string, any>) => ({
+        .map((p) => ({
           id: p.id,
           label: p.title?.trim() || "Planung ohne Titel",
           preferred: p.user_id === user.id || collaboratorIds.has(p.id),
@@ -348,7 +339,7 @@ export function useNavPanelData({
 
   return {
     userProfile,
-    upcomingAppointments,
+    upcomingAppointments: upcomingAppointments.filter(appointment => Date.parse(appointment.start_time) <= addDays(new Date(), 5).getTime()),
     nextAppointment,
     appointmentsLoading,
     appointmentsError,

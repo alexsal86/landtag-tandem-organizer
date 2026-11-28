@@ -143,7 +143,7 @@ const fetchNavigationCounts = async (userId: string, tenantId: string): Promise<
   return counts;
 };
 
-export const useNavigationNotifications = (): NavigationNotifications => {
+export const useNavigationNotifications = ({ observe = true } = {}): NavigationNotifications => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const queryClient = useQueryClient();
@@ -155,7 +155,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
   const { data: navigationCounts = {}, isLoading } = useQuery({
     queryKey: [QUERY_KEY, userId, tenantId],
     queryFn: () => fetchNavigationCounts(userId!, tenantId!),
-    enabled: !!userId && !!tenantId,
+    enabled: observe && !!userId && !!tenantId,
     staleTime: 60_000, // 1 minute — prevents refetch on every mount
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
@@ -167,7 +167,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
   }, [queryClient, userId, tenantId]);
 
   const markNavigationAsVisited = useCallback(async (context: string): Promise<void> => {
-    if (!user || context.trim() === '') return;
+    if (!user || !tenantId || context.trim() === '') return;
 
     try {
       const now = new Date();
@@ -200,6 +200,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
         .update({ is_read: true, read_at: now.toISOString() })
         .eq('user_id', user.id)
         .eq('navigation_context', context)
+        .eq('tenant_id', tenantId)
         .eq('is_read', false);
 
       if (notificationsError) {
@@ -233,7 +234,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
 
   // Realtime + event listeners for invalidation
   useEffect(() => {
-    if (!user) return;
+    if (!user || !observe) return;
 
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const channelName = `navigation_visits_only_${user.id}_${crypto.randomUUID()}`;
@@ -273,12 +274,12 @@ export const useNavigationNotifications = (): NavigationNotifications => {
       void supabase.removeChannel(channel);
       window.removeEventListener('notifications-changed', handleNotificationUpdate);
     };
-  }, [invalidateCounts, user]);
+  }, [invalidateCounts, user, observe]);
 
   // Cross-tab sync
   useEffect(() => {
     const handleStorageChange = (event: StorageEvent): void => {
-      if (!user) return;
+      if (!user || !observe) return;
       const storageEvent = parseNavigationStorageEvent(event);
       if (!storageEvent) return;
 
@@ -302,7 +303,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [invalidateCounts, user, userId, tenantId, queryClient]);
+  }, [invalidateCounts, user, userId, tenantId, queryClient, observe]);
 
   return {
     navigationCounts,

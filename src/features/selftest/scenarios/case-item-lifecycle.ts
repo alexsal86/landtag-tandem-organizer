@@ -4,7 +4,7 @@ import type { TestContext, TestScenario, StepResult } from "../types";
 import { SELFTEST_MARKER, SELFTEST_PREFIX } from "../runner";
 import { describeError, expectFields } from "../verify";
 import {
-  ballChangeEvents, isOnResubmission, stepState, withAutoDeadline, resubmissionHint,
+  ballChangeEvents, isOnResubmission, isPersonalCaseAction, stepState, withAutoDeadline, resubmissionHint,
   MINISTRY_RESPONSE_DAYS, type TriageItem,
 } from "@/features/cases/items/ball";
 import { appendEntries, normalizeStore } from "@/components/dayslip/daySlipState";
@@ -90,7 +90,10 @@ export const caseItemLifecycleScenario: TestScenario = {
         if (days !== MINISTRY_RESPONSE_DAYS) fails.push(`Ministeriumsfrist ${days} statt ${MINISTRY_RESPONSE_DAYS} Tage`);
         const ev = ballChangeEvents({ ball_owner: "office" }, { ball_owner: "authority" }, () => null, now);
         if (ev[0]?.title !== "Am Zug geändert") fails.push("Wechsel am Zug nicht im Verlauf");
-        return fails.length ? { ok: false, message: fails.join(" · ") } : { ok: true, message: "7 Regeln bestanden." };
+        const personalCase = { status: "in_klaerung", ball_owner: "office", owner_user_id: "ich" };
+        if (!isPersonalCaseAction(personalCase, "ich", now)) fails.push("Eigener fälliger Bürovorgang fehlt");
+        if (isPersonalCaseAction({ ...personalCase, next_action_assignee_id: "vertretung" }, "ich", now)) fails.push("Übergebener Vorgang wird als persönlich gezählt");
+        return fails.length ? { ok: false, message: fails.join(" · ") } : { ok: true, message: "9 Regeln bestanden." };
       },
     },
     {
