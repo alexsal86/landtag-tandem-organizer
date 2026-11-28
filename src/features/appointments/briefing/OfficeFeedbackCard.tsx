@@ -366,7 +366,7 @@ function OfficeFeedbackForm() {
           {feedback.isLoading ? "Wird geladen…" : pending.length ? `${pending.length} ${pending.length === 1 ? "Termin" : "Termine"}${pending.filter(isDeferred).length ? ` · ${pending.filter(isDeferred).length} verschoben` : ""}` : "Alles erledigt"}
         </span>
       </header>
-      <div className="px-5 pb-5">
+      <div className="px-5 pb-5 pt-3">
       {isAbgeordneter && <DeputyDebriefReview reviews={reviews} tenantScope={`${currentTenant?.id}:${user?.id}`} />}
       {!feedback.isLoading && !feedback.isError && current && reminderToken !== acknowledgedReminder && isOfficeReminderDue(snoozes[key], now) && (
         <div key={key} role="status" className="animate-fade-up mb-4 flex items-start gap-2 rounded-2xl bg-[#eaf5df] px-3 py-2 text-meta font-medium text-[#55ad21]">

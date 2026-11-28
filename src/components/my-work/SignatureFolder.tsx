@@ -70,7 +70,7 @@ function SignatureFolderContent({ tenantId, userId }: { tenantId: string; userId
           </button>
         </h3>
       </CardHeader>
-      <CardContent id={listId} hidden={!visible} className="px-4 pb-4 sm:px-5">
+      <CardContent id={listId} hidden={!visible} className="px-4 pb-4 pt-3 sm:px-5">
         {query.isPending ? <LoadingState variant="list" rows={3} /> :
           query.isError ? <ErrorState description="Die Unterschriftenmappe konnte nicht geladen werden." onRetry={() => void query.refetch()} /> :
           <>
