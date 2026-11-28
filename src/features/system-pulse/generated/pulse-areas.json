@@ -1333,6 +1333,7 @@
           "features": [
             "decisions.attachments",
             "decisions.change-vote",
+            "decisions.comment-mentions",
             "decisions.comments",
             "decisions.create",
             "decisions.delivery-preferences",
@@ -1402,6 +1403,10 @@
             {
               "id": "delivery-preferences",
               "label": "Persönliche Zustellfrequenz und Ruhezeiten respektieren"
+            },
+            {
+              "id": "comment-mentions",
+              "label": "Direkte Erwähnungen sofort und außerhalb des Digests zustellen"
             },
             {
               "id": "notification-metrics",

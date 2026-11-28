@@ -2805,6 +2805,11 @@
       "area": "vorgaenge"
     },
     {
+      "id": "decisions.comment-mentions",
+      "name": "Direkte Erwähnungen",
+      "area": "entscheidungen"
+    },
+    {
       "id": "decisions.notification-digest",
       "name": "Gebündelte Entscheidungs-Meldungen",
       "area": "entscheidungen"
@@ -2835,6 +2840,11 @@
       "id": "cases.interactions",
       "name": "Kontakte und Interaktionen am Vorgang",
       "area": "vorgaenge"
+    },
+    {
+      "id": "decisions.comment-mentions",
+      "name": "Direkte Erwähnungen",
+      "area": "entscheidungen"
     },
     {
       "id": "decisions.delivery-preferences",
@@ -3064,6 +3074,11 @@
       "id": "admin.users-sessions",
       "name": "Benutzer, MFA und Sitzungen",
       "area": "verwaltung"
+    },
+    {
+      "id": "decisions.comment-mentions",
+      "name": "Direkte Erwähnungen",
+      "area": "entscheidungen"
     },
     {
       "id": "knowledge.persons",
@@ -3526,6 +3541,11 @@
     }
   ],
   "task_decision_comments": [
+    {
+      "id": "decisions.comment-mentions",
+      "name": "Direkte Erwähnungen",
+      "area": "entscheidungen"
+    },
     {
       "id": "decisions.comments",
       "name": "Kommentare und Reaktionen",

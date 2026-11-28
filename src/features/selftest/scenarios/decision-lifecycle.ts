@@ -466,6 +466,21 @@ export const decisionLifecycleScenario: TestScenario = {
       },
     },
     {
+      id: "comment-mentions", label: "Direkte Erwähnungen sofort und außerhalb des Digests zustellen", kind: "workflow",
+      run: async (ctx) => {
+        const { data, error } = await supabase.rpc("decision_mention_notification_selftest", { p_tenant: ctx.tenantId });
+        if (error) return { ok: false, message: describeError(error) };
+        const report = data as { ok?: boolean; message?: string; skipped?: string; checks?: Record<string, unknown> } | null;
+        return {
+          ok: report?.ok === true,
+          message: report?.ok === true
+            ? "Erwähnungen erreichen die Person auch bei aus, erzeugen keine doppelte Kommentarmeldung und landen nicht im Digest."
+            : (report?.skipped ?? report?.message ?? "Erwähnungs-Selbsttest fehlgeschlagen."),
+          details: report?.checks,
+        };
+      },
+    },
+    {
       id: "notification-metrics", label: "Zustellungen, Abschaltquote, Antwortzeit, Anstupser und Trigger-Fehler messen", kind: "workflow",
       run: async (ctx) => {
         const { data, error } = await supabase.rpc("decision_notification_metrics_selftest", { p_tenant: ctx.tenantId });

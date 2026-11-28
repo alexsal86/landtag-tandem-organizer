@@ -432,9 +432,9 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `email_logs` | dokumente, entscheidungen, kommunikation, schnittstellen, termine, veranstaltungen |
 | `topics` | dokumente, kontakte, mitarbeit, organisation, vorgaenge, wissen |
 | `contacts` | arbeitsbereich, dokumente, kontakte, schnittstellen, verwaltung |
+| `profiles` | arbeitsbereich, aufgaben, entscheidungen, verwaltung, wissen |
 | `appointments` | arbeitsbereich, schnittstellen, termine, vorgaenge |
 | `documents` | aufgaben, dokumente, organisation, vorgaenge |
-| `profiles` | arbeitsbereich, aufgaben, verwaltung, wissen |
 | `annual_task_completions` | aufgaben, automation, mitarbeit |
 | `annual_tasks` | aufgaben, automation, mitarbeit |
 | `appointment_preparations` | arbeitsbereich, schnittstellen, termine |

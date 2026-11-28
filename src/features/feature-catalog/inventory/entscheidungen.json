@@ -312,6 +312,46 @@
       ]
     },
     {
+      "id": "decisions.comment-mentions",
+      "subarea": "Kommentare",
+      "name": "Direkte Erwähnungen",
+      "description": "@Anzeigename in Entscheidungskommentaren erzeugt eine eigene, sofortige Meldung. Sie wird nicht gebündelt, erreicht die Person auch bei aus oder gebündelt und ersetzt die allgemeine Kommentarmeldung.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/migrations/20261128231000_decision_comment_mentions.sql",
+        "supabase/migrations/20261128232000_decision_comment_mentions_selftest.sql",
+        "src/features/selftest/scenarios/decision-lifecycle.ts"
+      ],
+      "rpcs": [
+        "decision_comment_mentions",
+        "decision_mention_notification_selftest"
+      ],
+      "tables": [
+        "task_decision_comments",
+        "notifications",
+        "notification_types",
+        "profiles"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "docs": [
+        "docs/decision-comment-mentions.md"
+      ],
+      "limitations": [
+        "Kein Mention-Autovervollständigen im Kommentarfeld; die Erwähnung wird als Text erkannt. Echter Push-Versand ist nicht geprüft."
+      ]
+    },
+    {
       "id": "decisions.delivery-preferences",
       "subarea": "Meldungen",
       "name": "Persönliche Zustellfrequenz und Ruhezeiten",
