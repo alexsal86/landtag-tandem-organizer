@@ -19,6 +19,8 @@ Diese Regeln definieren die verpflichtenden und optionalen Qualitäts- und Secur
    - Archivierung erzeugt PDF, speichert Dokument-Metadaten und setzt Briefstatus auf `sent`.
 4. **Benachrichtigungen (Read/Unread)**
    - Laden, Optimistic Updates, `markAllAsRead`, Cross-Tab-Signale über LocalStorage.
+   - Mandanten-Grenze: Liste, Zähler, Realtime-Kanal, Gelesen-Markieren und Löschen sind auf den aktiven Mandanten begrenzt.
+   - Typ-Vertrag: `npm run check:notification-types` gleicht `STANDARD_NOTIFICATION_TYPES`, die Selbsttest-Erwartungen, die Client-Aufrufe und die Deep-Link-Ziele ab; der Schritt `notification-types` im Szenario `notification-inbox` prüft die Existenz je Büro.
 5. **Edge-Auth/Role/Tenant-Grenzen**
    - Edge Functions mit Auth-, Rollen- und Tenant-Grenzfallprüfungen inkl. Trigger-Wiederholungen.
 

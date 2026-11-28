@@ -57,7 +57,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 |---|---|---:|---:|---|
 | `appointment-briefing-lifecycle` | Briefing-Lifecycle (vergeben → Aufgabe → vorlegen → freigeben) | 3 | 5 | — |
 | `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 8 | 6 | — |
-| `notification-inbox` | Benachrichtigungs-Inbox (Erzeugen, Gelesen-Markieren, Zurücksetzen und Zugriffsgrenze) | 1 | 4 | — |
+| `notification-inbox` | Benachrichtigungs-Inbox (Erzeugen, Gelesen-Markieren, Zurücksetzen und Zugriffsgrenze) | 1 | 5 | — |
 | `quick-note-lifecycle` | Notizen-Lifecycle (Anlegen → Priorität → Anheften → Aufgabe → Archiv) | 4 | 0 | — |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 7 | — |
 | `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | 5 | 8 | — |
@@ -104,6 +104,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `nudge-boundary` | Fremde oder unbekannte Entscheidung lässt sich nicht anstupsen | workflow | — |
 | `decision-lifecycle` | `nudge-open-decision` | Offene Entscheidung anmahnen: Eintrag und 24-Stunden-Sperre | workflow | — |
 | `notification-inbox` | `create-notification` | Benachrichtigung erzeugen | db | — |
+| `notification-inbox` | `notification-types` | Alle vom Client erzeugten Meldungstypen existieren im Büro | db | — |
 | `notification-inbox` | `mark-read` | Benachrichtigung als gelesen markieren | db | — |
 | `notification-inbox` | `reset-unread` | Benachrichtigung wieder auf ungelesen zurücksetzen | db | — |
 | `notification-inbox` | `access-boundary` | Fremde Benachrichtigungen bleiben unlesbar und unverändert | db | — |
@@ -176,7 +177,8 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 1. Eine Benachrichtigung wird mit Mandant, Typ und Deep-Link-Daten angelegt und ist ungelesen
 2. Als-gelesen-Markieren setzt is_read und read_at und ist erneut lesbar
 3. Zurücksetzen setzt die Benachrichtigung wieder auf ungelesen und leert read_at
-4. Fremde Benachrichtigungen liefern keine Zeilen, und ein Update mit fremdem Nutzerbezug ändert die eigene Zeile nicht
+4. Alle clientseitig erzeugten Meldungstypen sind im Büro aktiv vorhanden
+5. Fremde Benachrichtigungen liefern keine Zeilen, und ein Update mit fremdem Nutzerbezug ändert die eigene Zeile nicht
 
 ### `quick-note-lifecycle`
 
@@ -397,7 +399,7 @@ Zeigt Vorschauen mit dem nächsten Termin samt Briefingstatus, einer offenen Auf
 - Keine.
 
 ### `notifications.inbox` — Benachrichtigungen lesen und als gelesen markieren
-Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslösenden Fachbereich; Lesen wird pro Nutzer persistiert. Liste, Ungelesen-Zähler, Realtime-Kanal sowie Gelesen-Markieren und Löschen sind auf den aktiven Mandanten begrenzt; beim Mandantenwechsel werden sie geleert und neu geladen.
+Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslösenden Fachbereich; Lesen wird pro Nutzer persistiert. Liste, Ungelesen-Zähler, Realtime-Kanal sowie Gelesen-Markieren und Löschen sind auf den aktiven Mandanten begrenzt; beim Mandantenwechsel werden sie geleert und neu geladen. Jeder clientseitig erzeugte Meldungstyp ist im Büro geseedet, hat eine Kategorie und ein ausdrückliches Deep-Link-Ziel.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -424,10 +426,12 @@ Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslö
 - src/pages/NotificationsPage.tsx
 - src/components/notifications/NotificationCenter.tsx
 - src/hooks/useNotifications.tsx
+- scripts/check-notification-types.mjs
+- src/features/selftest/notificationTypeExpectations.ts
 
 **Bekannte Einschränkungen**
 
-- Erzeugen, Gelesen-Markieren und Zurücksetzen laufen über die Inbox-Tabelle; die Zustellung je Fach-Trigger (Aufgaben, Termine, Nachrichten, Freigaben) sowie Push und Oberfläche prüft das Szenario nicht. Die mandantenscharfe Begrenzung von Liste, Zähler und Realtime ist eine Client-Regel und wird dort nicht geprüft.
+- Erzeugen, Gelesen-Markieren und Zurücksetzen laufen über die Inbox-Tabelle; die Zustellung je Fach-Trigger (Aufgaben, Termine, Nachrichten, Freigaben) sowie Push und Oberfläche prüft das Szenario nicht. Die mandantenscharfe Begrenzung von Liste, Zähler und Realtime ist eine Client-Regel und wird dort nicht geprüft. Der Schritt notification-types prüft nur die Existenz der Typen im Büro, nicht ihre Auslösung; check:notification-types prüft Seed, Client-Aufrufe und Deep-Link-Ziele statisch.
 
 **Offene Prüfpunkte**
 

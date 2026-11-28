@@ -322,7 +322,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `notifications.inbox`
 
-- Erzeugen, Gelesen-Markieren und Zurücksetzen laufen über die Inbox-Tabelle; die Zustellung je Fach-Trigger (Aufgaben, Termine, Nachrichten, Freigaben) sowie Push und Oberfläche prüft das Szenario nicht. Die mandantenscharfe Begrenzung von Liste, Zähler und Realtime ist eine Client-Regel und wird dort nicht geprüft.
+- Erzeugen, Gelesen-Markieren und Zurücksetzen laufen über die Inbox-Tabelle; die Zustellung je Fach-Trigger (Aufgaben, Termine, Nachrichten, Freigaben) sowie Push und Oberfläche prüft das Szenario nicht. Die mandantenscharfe Begrenzung von Liste, Zähler und Realtime ist eine Client-Regel und wird dort nicht geprüft. Der Schritt notification-types prüft nur die Existenz der Typen im Büro, nicht ihre Auslösung; check:notification-types prüft Seed, Client-Aufrufe und Deep-Link-Ziele statisch.
 - Benachrichtigungen entstehen über viele Datenbank-Trigger; die Zuordnung ist bereichsübergreifend und nicht vollständig je Trigger geprüft.
 
 ### `notifications.preferences`

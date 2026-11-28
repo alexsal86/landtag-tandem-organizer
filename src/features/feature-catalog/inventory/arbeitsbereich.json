@@ -234,7 +234,7 @@
       "id": "notifications.inbox",
       "subarea": "Benachrichtigungen",
       "name": "Benachrichtigungen lesen und als gelesen markieren",
-      "description": "Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslösenden Fachbereich; Lesen wird pro Nutzer persistiert. Liste, Ungelesen-Zähler, Realtime-Kanal sowie Gelesen-Markieren und Löschen sind auf den aktiven Mandanten begrenzt; beim Mandantenwechsel werden sie geleert und neu geladen.",
+      "description": "Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslösenden Fachbereich; Lesen wird pro Nutzer persistiert. Liste, Ungelesen-Zähler, Realtime-Kanal sowie Gelesen-Markieren und Löschen sind auf den aktiven Mandanten begrenzt; beim Mandantenwechsel werden sie geleert und neu geladen. Jeder clientseitig erzeugte Meldungstyp ist im Büro geseedet, hat eine Kategorie und ein ausdrückliches Deep-Link-Ziel.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
@@ -243,7 +243,9 @@
       "evidence": [
         "src/pages/NotificationsPage.tsx",
         "src/components/notifications/NotificationCenter.tsx",
-        "src/hooks/useNotifications.tsx"
+        "src/hooks/useNotifications.tsx",
+        "scripts/check-notification-types.mjs",
+        "src/features/selftest/notificationTypeExpectations.ts"
       ],
       "routes": [
         "/notifications"
@@ -283,7 +285,7 @@
         "Benachrichtigungen entstehen über viele Datenbank-Trigger; die Zuordnung ist bereichsübergreifend und nicht vollständig je Trigger geprüft."
       ],
       "limitations": [
-        "Erzeugen, Gelesen-Markieren und Zurücksetzen laufen über die Inbox-Tabelle; die Zustellung je Fach-Trigger (Aufgaben, Termine, Nachrichten, Freigaben) sowie Push und Oberfläche prüft das Szenario nicht. Die mandantenscharfe Begrenzung von Liste, Zähler und Realtime ist eine Client-Regel und wird dort nicht geprüft."
+        "Erzeugen, Gelesen-Markieren und Zurücksetzen laufen über die Inbox-Tabelle; die Zustellung je Fach-Trigger (Aufgaben, Termine, Nachrichten, Freigaben) sowie Push und Oberfläche prüft das Szenario nicht. Die mandantenscharfe Begrenzung von Liste, Zähler und Realtime ist eine Client-Regel und wird dort nicht geprüft. Der Schritt notification-types prüft nur die Existenz der Typen im Büro, nicht ihre Auslösung; check:notification-types prüft Seed, Client-Aufrufe und Deep-Link-Ziele statisch."
       ],
       "scenarios": [
         "notification-inbox"

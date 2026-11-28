@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { REQUIRED_NOTIFICATION_TYPES } from "../notificationTypeExpectations";
 import type { TestScenario } from "../types";
 import { SELFTEST_PREFIX } from "../runner";
 import { describeError } from "../verify";
@@ -15,6 +16,7 @@ export const notificationInboxScenario: TestScenario = {
     "Eine Benachrichtigung wird mit Mandant, Typ und Deep-Link-Daten angelegt und ist ungelesen",
     "Als-gelesen-Markieren setzt is_read und read_at und ist erneut lesbar",
     "Zurücksetzen setzt die Benachrichtigung wieder auf ungelesen und leert read_at",
+    "Alle clientseitig erzeugten Meldungstypen sind im Büro aktiv vorhanden",
     "Fremde Benachrichtigungen liefern keine Zeilen, und ein Update mit fremdem Nutzerbezug ändert die eigene Zeile nicht",
   ],
   limitations: [
@@ -67,6 +69,27 @@ export const notificationInboxScenario: TestScenario = {
             ? "Benachrichtigung liegt ungelesen im eigenen Postfach und trägt Mandant, Typ und Deep-Link."
             : "Die angelegte Benachrichtigung weicht von Mandant, Empfänger oder Lesestatus ab.",
           details: own.data,
+        };
+      },
+    },
+    {
+      id: "notification-types", label: "Alle vom Client erzeugten Meldungstypen existieren im Büro",
+      run: async ctx => {
+        const expected = [...REQUIRED_NOTIFICATION_TYPES];
+        const { data, error } = await supabase.from("notification_types")
+          .select("name,is_active")
+          .eq("tenant_id", ctx.tenantId)
+          .in("name", expected);
+        if (error) return { ok: false, message: `Meldungstypen lesen: ${describeError(error)}` };
+
+        const active = new Set((data ?? []).filter((row: { is_active: boolean }) => row.is_active).map((row: { name: string }) => row.name));
+        const missing = expected.filter(name => !active.has(name));
+        return {
+          ok: missing.length === 0,
+          message: missing.length === 0
+            ? `${expected.length} clientseitig erzeugte Meldungstypen sind im Büro aktiv vorhanden.`
+            : `Im Büro fehlen aktive Meldungstypen: ${missing.join(", ")}. create_notification würde diese Meldungen verwerfen.`,
+          details: { expected: expected.length, missing },
         };
       },
     },

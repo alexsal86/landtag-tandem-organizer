@@ -91,6 +91,7 @@ export const buildDeepLinkPath = (notification: Notification): string => {
       return buildHighlightPath('/knowledge', getNotificationDataId(data, 'document_id'));
 
     case 'meeting_created':
+    case 'meeting_archived':
       return buildHighlightPath('/meetings', getNotificationDataId(data, 'meeting_id'));
 
     case 'employee_meeting':
@@ -111,6 +112,19 @@ export const buildDeepLinkPath = (notification: Notification): string => {
     case 'note_follow_up':
     case 'quick_note_shared':
       return buildQuickNoteHref(getNotificationDataId(data, 'noteId'));
+
+    case 'case_item_assigned':
+    case 'case_item_status_changed':
+    case 'case_item_comment': {
+      const caseItemId = getNotificationDataId(data, 'case_item_id', 'caseItemId');
+      return caseItemId ? buildCaseItemHref(caseItemId) : '/mywork?tab=cases';
+    }
+
+    case 'time_tracking':
+      return '/time';
+
+    case 'team_news':
+      return '/mywork?tab=team';
 
     case 'case_interaction_mention': {
       // Erwähnungen aus einer Vorgangs-Interaktion öffnen den Vorgang; nur ohne Vorgang

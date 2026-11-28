@@ -2130,6 +2130,7 @@
             "Eine Benachrichtigung wird mit Mandant, Typ und Deep-Link-Daten angelegt und ist ungelesen",
             "Als-gelesen-Markieren setzt is_read und read_at und ist erneut lesbar",
             "Zurücksetzen setzt die Benachrichtigung wieder auf ungelesen und leert read_at",
+            "Alle clientseitig erzeugten Meldungstypen sind im Büro aktiv vorhanden",
             "Fremde Benachrichtigungen liefern keine Zeilen, und ein Update mit fremdem Nutzerbezug ändert die eigene Zeile nicht"
           ],
           "tables": [
@@ -2142,6 +2143,10 @@
             {
               "id": "create-notification",
               "label": "Benachrichtigung erzeugen"
+            },
+            {
+              "id": "notification-types",
+              "label": "Alle vom Client erzeugten Meldungstypen existieren im Büro"
             },
             {
               "id": "mark-read",
