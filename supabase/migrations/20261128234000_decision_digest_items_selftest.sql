@@ -35,9 +35,13 @@ BEGIN
   END IF;
 
   BEGIN
-    INSERT INTO public.decision_notification_preferences (user_id, tenant_id, delivery_mode)
-    VALUES (v_recipient, p_tenant, 'digest')
-    ON CONFLICT (user_id, tenant_id) DO UPDATE SET delivery_mode = 'digest', updated_at = now();
+    UPDATE public.decision_notification_preferences
+    SET delivery_mode = 'digest', updated_at = now()
+    WHERE user_id = v_recipient AND tenant_id = p_tenant;
+    IF NOT FOUND THEN
+      INSERT INTO public.decision_notification_preferences (user_id, tenant_id, delivery_mode)
+      VALUES (v_recipient, p_tenant, 'digest');
+    END IF;
 
     INSERT INTO public.task_decisions (title, description, created_by, tenant_id)
     VALUES ('[SELFTEST] Digest-Inhalt', '[SELFTEST]', v_actor, p_tenant)
