@@ -1099,7 +1099,8 @@
         "task_decision_attachments",
         "task_decision_comments",
         "task_decision_comment_reactions",
-        "dashboard_decision_nudges"
+        "dashboard_decision_nudges",
+        "notifications"
       ],
       "features": [
         "decisions"
@@ -1182,6 +1183,19 @@
             "tenant_id",
             "nudged_by",
             "note"
+          ]
+        },
+        {
+          "table": "notifications",
+          "columns": [
+            "tenant_id",
+            "user_id",
+            "notification_type_id",
+            "title",
+            "message",
+            "data",
+            "priority",
+            "is_read"
           ]
         }
       ],
@@ -4368,6 +4382,7 @@
       "table": "notifications",
       "status": "scenario",
       "scenarios": [
+        "decision-lifecycle",
         "notification-inbox",
         "onboarding-hr",
         "social-content-lifecycle"

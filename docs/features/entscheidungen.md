@@ -49,7 +49,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 9 | 6 | — |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 10 | 7 | — |
 
 ## Selbsttest-Schritte
 
@@ -66,11 +66,12 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `change-vote-history` | Antwort ändern und den bisherigen Stand im Verlauf behalten | workflow | — |
 | `decision-lifecycle` | `decision-attachments` | Anhang-Metadaten an die Entscheidung hängen, lesen und entfernen | workflow | — |
 | `decision-lifecycle` | `comments-and-reactions` | Kommentar, Antwort und Emoji-Reaktion speichern und entfernen | workflow | — |
+| `decision-lifecycle` | `notifications` | Meldungen entstehen im Mandanten der Entscheidung | workflow | — |
 | `decision-lifecycle` | `set-open` | Status auf 'open' | db | — |
 | `decision-lifecycle` | `archive` | Archivieren | db | — |
 | `decision-lifecycle` | `verify` | Verifikation | db | — |
 | `decision-lifecycle` | `nudge-boundary` | Fremde oder unbekannte Entscheidung lässt sich nicht anstupsen | workflow | — |
-| `decision-lifecycle` | `nudge-open-decision` | Offene Entscheidung anmahnen: Eintrag und 24-Stunden-Sperre | workflow | — |
+| `decision-lifecycle` | `nudge-open-decision` | Offene Entscheidung anmahnen: Eintrag, Meldung und 24-Stunden-Sperre | workflow | — |
 
 ## Deklarierter Prüfumfang
 
@@ -82,11 +83,12 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 4. Kommentar und Antwort werden gespeichert; Emoji-Reaktionen folgen der Allowlist, sind je Person eindeutig und wieder entfernbar
 5. Das Anmahnen speichert den Eintrag mit Absender und Notiz und weist die zweite Mahnung innerhalb von 24 Stunden ab
 6. Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen
+7. Anfrage-, Kommentar-, Reaktions-, Ersteller-Antwort- und Abschlussmeldung entstehen im Mandanten der Entscheidung
 
 ## Funktionsdetails
 
 ### `decisions.create` — Entscheidung anlegen
-Erstellt eine Entscheidung mit Optionen, Frist, Teilnehmenden, Anhängen und Bezug zu Aufgabe, Vorgang oder Meeting.
+Erstellt eine Entscheidung mit Optionen, Frist, Teilnehmenden, Anhängen und Bezug zu Aufgabe, Vorgang oder Meeting. Die Anfrage an Teilnehmende entsteht per Trigger im Mandanten der Entscheidung.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -99,19 +101,21 @@ Erstellt eine Entscheidung mit Optionen, Frist, Teilnehmenden, Anhängen und Bez
 - **Services:** —
 - **Hooks:** `src/hooks/useMyWorkDecisionsData.ts`, `src/hooks/useDefaultDecisionSettings.ts`
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `create_work_decision`
+- **Datenbankfunktionen:** `create_work_decision`, `decision_notification_selftest`
 - **Tabellen:** `task_decisions`, `task_decision_participants`, `task_decision_topics`, `task_decision_attachments`
 - **Abhängigkeiten:** —
 - **Selbsttests:** `decision-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
-- **Dokumentation:** `docs/my-work-decisions-button-flowchart.md`
+- **Dokumentation:** `docs/my-work-decisions-button-flowchart.md`, `docs/decision-notifications.md`
 
 **Nachweise im Quellcode**
 
 - src/pages/Decisions.tsx
 - src/features/selftest/scenarios/decision-lifecycle.ts
+- supabase/migrations/20261128210000_decision_notification_tenant.sql
+- supabase/migrations/20261128213000_decision_notification_trigger_safety.sql
 
 **Bekannte Einschränkungen**
 
@@ -158,7 +162,7 @@ Bestimmt den Teilnehmerkreis, erzeugt eindeutige Antwort-Token und schützt den 
 - Keine.
 
 ### `decisions.vote` — Abstimmen
-Nimmt Ja/Nein/Enthaltung an, protokolliert die Antwort und stößt Benachrichtigungen und Aufgabenfolgen an.
+Nimmt Ja/Nein/Enthaltung an, protokolliert die Antwort und stößt Aufgabenfolgen an. Abschluss und Ersteller-Antwort meldet ein Trigger im Mandanten der Entscheidung.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -265,7 +269,7 @@ Erlaubt die Änderung einer abgegebenen Antwort und hält die Antwort-Historie r
 - Die Änderungsmöglichkeit ist im Szenario nur als Folgepfad, nicht als eigener Prüfschritt abgedeckt.
 
 ### `decisions.comments` — Kommentare und Reaktionen
-Ermöglicht Kommentare zu Entscheidungen, Antworten auf Kommentare und Emoji-Reaktionen.
+Ermöglicht Kommentare zu Entscheidungen, Antworten auf Kommentare und Emoji-Reaktionen. Kommentar- und Reaktionsmeldungen entstehen per Trigger im Mandanten der Entscheidung; je Empfänger, Kommentar und Emoji höchstens eine Reaktionsmeldung in fünf Minuten, und Meldungsfehler rollen den Kommentar nicht zurück.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -285,16 +289,18 @@ Ermöglicht Kommentare zu Entscheidungen, Antworten auf Kommentare und Emoji-Rea
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
-- **Dokumentation:** `docs/task-decision-reactions-rollout.md`, `docs/emoji-reactions-dod-v1.md`
+- **Dokumentation:** `docs/task-decision-reactions-rollout.md`, `docs/emoji-reactions-dod-v1.md`, `docs/decision-notifications.md`
 
 **Nachweise im Quellcode**
 
 - src/hooks/useDecisionComments.ts
 - src/components/shared/DecisionResponseSummary.tsx
+- supabase/migrations/20261128210000_decision_notification_tenant.sql
+- supabase/migrations/20261128213000_decision_notification_trigger_safety.sql
 
 **Bekannte Einschränkungen**
 
-- Geprüft sind Anlegen, Antwort, Reaktion samt Emoji-Allowlist und Entfernen. Das Bearbeiten eigener Kommentare und die Sichtbarkeitsgrenze für Nicht-Beteiligte haben keinen Schritt.
+- Geprüft sind Anlegen, Antwort, Reaktion samt Emoji-Allowlist, Entfernen, die Fünf-Minuten-Sperre samt Ablauf und der Ausschluss von Nicht-Mitgliedern. Das Bearbeiten eigener Kommentare und die Sichtbarkeitsgrenze für Nicht-Beteiligte haben keinen Schritt.
 
 **Offene Prüfpunkte**
 

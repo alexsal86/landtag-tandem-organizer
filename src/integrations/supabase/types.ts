@@ -19164,6 +19164,7 @@ export type Database = {
         }
         Returns: Json
       }
+      decision_notification_selftest: { Args: { p_tenant: string }; Returns: Json }
       decide_appointment_request: {
         Args: {
           _briefing?: string

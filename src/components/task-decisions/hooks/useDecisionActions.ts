@@ -3,12 +3,7 @@ import type { User } from "@supabase/supabase-js";
 import { debugConsole } from "@/utils/debugConsole";
 import { supabase } from "@/integrations/supabase/client";
 import type { DecisionRequest } from "../utils/decisionOverview";
-import type { DecisionResponseNotificationLookup } from "@/types/taskDecisions";
 import { notify } from "@/lib/notify";
-
-type NotificationResponseRow = Pick<DecisionResponseNotificationLookup, "task_decision_participants" | "task_decisions"> & {
-  decision_id: string;
-};
 
 type FollowupSourceResponseRow = {
   decision_id: string;
@@ -22,23 +17,6 @@ const hasOwnProperty = <TKey extends PropertyKey>(
   value: object,
   key: TKey,
 ): value is Record<TKey, unknown> => Object.prototype.hasOwnProperty.call(value, key);
-
-const isNotificationResponseRow = (value: unknown): value is NotificationResponseRow => {
-  if (!isRecord(value)) return false;
-  if (!hasOwnProperty(value, "decision_id") || typeof value.decision_id !== "string") return false;
-
-  const participant = value.task_decision_participants;
-  if (participant !== null && (!isRecord(participant) || typeof participant.user_id !== "string")) {
-    return false;
-  }
-
-  const decision = value.task_decisions;
-  if (decision !== null && (!isRecord(decision) || typeof decision.title !== "string")) {
-    return false;
-  }
-
-  return true;
-};
 
 const isFollowupSourceResponseRow = (value: unknown): value is FollowupSourceResponseRow => {
   if (!isRecord(value)) return false;
@@ -121,41 +99,8 @@ export function useDecisionActions({
       setCreatorResponses((prev) => ({ ...prev, [responseId]: "" }));
       refresh();
 
-      try {
-        if (mode !== "creator_response") return;
-
-        const { data: responseData } = await supabase
-          .from("task_decision_responses")
-          .select(
-            `id, decision_id, task_decision_participants!inner(user_id), task_decisions!inner(title)`,
-          )
-          .eq("id", responseId)
-          .maybeSingle();
-
-        if (isNotificationResponseRow(responseData)) {
-          const participantUserId = responseData.task_decision_participants?.user_id;
-          const decisionTitle = responseData.task_decisions?.title;
-
-          if (participantUserId && participantUserId !== user?.id) {
-            await supabase.rpc("create_notification", {
-              user_id_param: participantUserId,
-              type_name: "task_decision_creator_response",
-              title_param: "Antwort auf Ihren Kommentar",
-              message_param: `Der Ersteller hat auf Ihren Kommentar zu "${decisionTitle}" geantwortet.`,
-              data_param: JSON.stringify({
-                decision_id: responseData.decision_id,
-                decision_title: decisionTitle,
-              }),
-              priority_param: "medium",
-            });
-          }
-        }
-      } catch (notifError) {
-        debugConsole.warn(
-          "Creator response notification failed (core action succeeded):",
-          notifError,
-        );
-      }
+      // Die Ersteller-Antwort meldet der Trigger auf task_decision_responses im
+      // Mandanten der Entscheidung.
     } catch (error) {
       debugConsole.error("Creator response core action failed:", error);
       notify.error("Fehler", {

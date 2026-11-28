@@ -223,20 +223,8 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
 
         if (insertError) throw insertError;
 
-        // Send notifications to new participants
-        for (const userId of toAdd) {
-          await supabase.rpc('create_notification', {
-            user_id_param: userId,
-            type_name: 'task_decision_request',
-            title_param: 'Neue Entscheidungsanfrage',
-            message_param: `Sie wurden zu einer Entscheidung hinzugefügt: "${title.trim()}"`,
-            data_param: JSON.stringify({
-              decision_id: decisionId,
-              decision_title: title.trim()
-            }),
-            priority_param: 'medium'
-          });
-        }
+        // Die Anfrage an neue Teilnehmende meldet der Trigger auf
+        // task_decision_participants im Mandanten der Entscheidung.
       }
 
       // Update topics

@@ -18,7 +18,6 @@ type DecisionCommentProfile = ParticipantProfile;
 
 const DELETED_COMMENT_TEXT = "Dieser Kommentar wurde gelöscht.";
 const REACTION_TOGGLE_DEBOUNCE_MS = 250;
-const REACTION_NOTIFICATION_WINDOW_MS = 60_000;
 
 interface DecisionCommentsProps {
   decisionId: string;
@@ -44,7 +43,6 @@ export function DecisionComments({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const reactionDebounceRef = useRef<Map<string, number>>(new Map());
   const pendingReactionOpsRef = useRef<Set<string>>(new Set());
-  const lastReactionNotificationRef = useRef<Map<string, number>>(new Map());
   const visibleCommentIdsRef = useRef<Set<string>>(new Set());
 
   const loadReactionRowsWithProfiles = useCallback(async (commentIds: string[]) => {
@@ -185,52 +183,7 @@ export function DecisionComments({
 
       if (error) throw error;
 
-      // Notify all participants and the decision creator (except the commenter)
-      const { data: decision } = await supabase
-        .from('task_decisions')
-        .select('created_by, title')
-        .eq('id', decisionId)
-        .single();
-
-      if (decision) {
-        // Get all participants
-        const { data: participants } = await supabase
-          .from('task_decision_participants')
-          .select('user_id')
-          .eq('decision_id', decisionId);
-
-        // Collect unique user IDs to notify (creator + all participants, except commenter)
-        const notifyUserIds = new Set<string>();
-        if (decision.created_by !== user.id) {
-          notifyUserIds.add(decision.created_by);
-        }
-        participants?.forEach((p: Record<string, any>) => {
-          if (p.user_id !== user.id) {
-            notifyUserIds.add(p.user_id);
-          }
-        });
-
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('display_name')
-          .eq('user_id', user.id)
-          .single();
-
-        for (const recipientId of notifyUserIds) {
-          await supabase.rpc('create_notification', {
-            user_id_param: recipientId,
-            type_name: 'task_decision_comment_received',
-            title_param: 'Neuer Kommentar',
-            message_param: `${profile?.display_name || 'Jemand'} hat einen Kommentar zu "${decision.title}" hinterlassen.`,
-            data_param: JSON.stringify({
-              decision_id: decisionId,
-              decision_title: decision.title
-            }),
-            priority_param: 'low'
-          });
-        }
-      }
-
+      // Kommentar-Meldungen entstehen per Trigger im Mandanten der Entscheidung.
       notify.success("Erfolg", {
         description: "Diskussionsbeitrag wurde hinzugefügt."
 });
@@ -354,60 +307,6 @@ export function DecisionComments({
     };
   }, [decisionId, isOpen, loadComments, refreshSingleCommentReactions]);
 
-  const notifyReactionRecipients = useCallback(async (commentId: string, emoji: string) => {
-    if (!user) return;
-
-    const dedupeKey = `${commentId}:${emoji}:${user.id}`;
-    const now = Date.now();
-    const lastSent = lastReactionNotificationRef.current.get(dedupeKey) ?? 0;
-    if (now - lastSent < REACTION_NOTIFICATION_WINDOW_MS) return;
-
-    const { data: comment } = await supabase
-      .from('task_decision_comments')
-      .select('id, user_id, decision_id')
-      .eq('id', commentId)
-      .single();
-
-    if (!comment) return;
-
-    const { data: decision } = await supabase
-      .from('task_decisions')
-      .select('created_by, title')
-      .eq('id', comment.decision_id)
-      .single();
-
-    const { data: participants } = await supabase
-      .from('task_decision_participants')
-      .select('user_id')
-      .eq('decision_id', comment.decision_id);
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('display_name')
-      .eq('user_id', user.id)
-      .single();
-
-    const recipientIds = new Set<string>();
-    if (comment.user_id !== user.id) recipientIds.add(comment.user_id);
-    if (decision?.created_by && decision.created_by !== user.id) recipientIds.add(decision.created_by);
-    participants?.forEach((participant: Record<string, any>) => {
-      if (participant.user_id !== user.id) recipientIds.add(participant.user_id);
-    });
-
-    for (const recipientId of recipientIds) {
-      await supabase.rpc('create_notification', {
-        user_id_param: recipientId,
-        type_name: 'task_decision_comment_reaction_received',
-        title_param: 'Neue Reaktion',
-        message_param: `${profile?.display_name || 'Jemand'} hat mit ${emoji} reagiert.`,
-        data_param: JSON.stringify({ decision_id: comment.decision_id, decision_title: decision?.title ?? '' }),
-        priority_param: 'low',
-      });
-    }
-
-    lastReactionNotificationRef.current.set(dedupeKey, now);
-  }, [user]);
-
   const trackReactionMetric = useCallback(async (emoji: string, eventType: 'insert' | 'delete') => {
     if (!user) return;
     const analyticsAllowed = window.localStorage.getItem('allowReactionAnalytics') === 'true';
@@ -448,12 +347,6 @@ export function DecisionComments({
           });
 
         if (error) throw error;
-
-        try {
-          await notifyReactionRecipients(commentId, emoji);
-        } catch (notificationError) {
-          debugConsole.error('Error sending reaction notifications:', notificationError);
-        }
 
         try {
           await trackReactionMetric(emoji, 'insert');

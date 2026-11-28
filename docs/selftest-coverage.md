@@ -22,7 +22,7 @@ Von 363 Tabellen haben 111 ein registriertes Szenario; 4 sind noch nicht eingeor
 | `contact-relations` | Kontakt-Beziehungen (Datenschutz → Themen → Duplikate → Sammelaktion → Verteiler → Wissen → Förderungen) | contacts, contact_activities, contact_topics, topics, call_logs, distribution_lists, distribution_list_members, gdpr_requests, map_flags, map_flag_types, contact_briefing_memory, fundings, funding_participants |
 | `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | daily_briefings |
 | `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | day_slips, tasks, quick_notes |
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants, task_decision_responses, task_decision_response_history, task_decision_vote_effects, task_decision_attachments, task_decision_comments, task_decision_comment_reactions, dashboard_decision_nudges |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants, task_decision_responses, task_decision_response_history, task_decision_vote_effects, task_decision_attachments, task_decision_comments, task_decision_comment_reactions, dashboard_decision_nudges, notifications |
 | `document-annotation` | Dokument-Annotation | documents, document_annotations, document_annotation_events, document_annotation_tasks, tasks, task_assignees |
 | `document-list` | Dokumente: Suche, Kategorien, Sortierung und Auswahl | Keine (reine Regeln) |
 | `election-analysis` | Wahlanalyse: Datenqualität und Vergleichbarkeit | Keine (reine Regeln) |
@@ -291,7 +291,7 @@ Von 363 Tabellen haben 111 ein registriertes Szenario; 4 sind noch nicht eingeor
 | `news_email_templates` | Ausgenommen bis 2027-06-30 | — |
 | `notification_navigation_mapping` | Ausgenommen bis 2027-06-30 | — |
 | `notification_types` | Szenario vorhanden | onboarding-hr |
-| `notifications` | Szenario vorhanden | notification-inbox, onboarding-hr, social-content-lifecycle |
+| `notifications` | Szenario vorhanden | decision-lifecycle, notification-inbox, onboarding-hr, social-content-lifecycle |
 | `office_debrief_state` | Ausstehend bis 2027-03-31 | — |
 | `parliament_protocols` | Ausstehend bis 2027-03-31 | — |
 | `parlis_deputy_mandates` | Ausstehend bis 2027-06-30 | — |
@@ -533,6 +533,7 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - decision-lifecycle: `task_decision_comments`: decision_id, user_id, parent_id, content
 - decision-lifecycle: `task_decision_comment_reactions`: comment_id, user_id, emoji
 - decision-lifecycle: `dashboard_decision_nudges`: decision_id, tenant_id, nudged_by, note
+- decision-lifecycle: `notifications`: tenant_id, user_id, notification_type_id, title, message, data, priority, is_read
 - employee-meetings: `employee_meeting_requests`: employee_id, tenant_id, reason, urgency, status
 - employee-meetings: `employee_meetings`: employee_id, conducted_by, tenant_id, meeting_date, meeting_type, status, employee_preparation
 - employee-meetings: `employee_meeting_private_notes`: meeting_id, user_id, notes
