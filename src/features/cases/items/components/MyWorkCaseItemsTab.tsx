@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CaseItemsArchiveSheet } from "@/features/cases/items/components/CaseItemsArchiveSheet";
+import { buildCaseItemHref } from "@/lib/appTargets";
 import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
 import { CaseItemMeetingSelector } from "@/components/my-work/CaseItemMeetingSelector";
 import { useAuth } from "@/hooks/useAuth";
@@ -595,7 +596,7 @@ export function MyWorkCaseItemsTab() {
                                 </Button>
                               </>
                             )}
-                            <Button size="sm" variant="outline" onClick={() => navigate(`/?section=casefiles&caseItemId=${item.id}`)}>
+                            <Button size="sm" variant="outline" onClick={() => navigate(buildCaseItemHref(item.id))}>
                               <ExternalLink className="mr-1 h-3.5 w-3.5" />
                               Öffnen
                             </Button>
@@ -611,7 +612,7 @@ export function MyWorkCaseItemsTab() {
                           <Button 
                             size="sm" 
                             variant="outline" 
-                            onClick={() => navigate(`/?section=casefiles&caseItemId=${item.id}`)}
+                            onClick={() => navigate(buildCaseItemHref(item.id))}
                             className="lg:hidden"
                           >
                             <ExternalLink className="h-3.5 w-3.5" />
@@ -621,7 +622,7 @@ export function MyWorkCaseItemsTab() {
                     </div>
                   </ContextMenuTrigger>
                   <ContextMenuContent>
-                    <ContextMenuItem onClick={() => navigate(`/?section=casefiles&caseItemId=${item.id}`)}>
+                    <ContextMenuItem onClick={() => navigate(buildCaseItemHref(item.id))}>
                       <ExternalLink className="mr-2 h-4 w-4" />
                       Öffnen
                     </ContextMenuItem>
