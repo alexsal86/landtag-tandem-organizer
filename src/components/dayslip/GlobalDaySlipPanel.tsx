@@ -65,8 +65,8 @@ function WorkspaceHelpBesideDaySlip({ daySlipOpen, reservedWidth }: { daySlipOpe
   if (!isWorkspace || !help) return null;
 
   return (
-    <div style={{ right: reservedWidth ? reservedWidth + 24 : 84 }}
-      className={cn("fixed bottom-9 z-[49] transition-transform duration-300 motion-reduce:transition-none",
+    <div style={{ right: reservedWidth ? reservedWidth + 24 : 100 }}
+      className={cn("fixed bottom-6 z-[49] transition-transform duration-300 motion-reduce:transition-none",
         daySlipOpen && !reservedWidth && "max-lg:hidden",
         tucked && !reservedWidth && "translate-x-3 focus-within:translate-x-0 motion-reduce:translate-x-0")}>
       <PageHelpButton title={help.title} description={help.description} features={help.features} />

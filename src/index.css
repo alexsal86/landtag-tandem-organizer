@@ -886,9 +886,8 @@ All colors MUST be HSL.
 }
 
 .dashboard-daylight {
-  position: fixed;
+  position: absolute;
   inset: 0 0 auto;
-  z-index: -1;
   height: 460px;
   pointer-events: none;
   background: radial-gradient(

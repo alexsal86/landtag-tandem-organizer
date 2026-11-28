@@ -33,5 +33,9 @@ export function DashboardDaylight() {
     return () => window.clearInterval(timer);
   }, []);
 
-  return <div ref={ref} aria-hidden="true" className="dashboard-daylight" />;
+  return (
+    <div aria-hidden="true" className="pointer-events-none sticky top-0 -z-10 h-0">
+      <div ref={ref} className="dashboard-daylight" />
+    </div>
+  );
 }
