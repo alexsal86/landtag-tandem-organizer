@@ -19442,6 +19442,7 @@ export type Database = {
       set_decision_daily_digest: { Args: { _tenant_id: string; _enabled: boolean }; Returns: Json }
       decision_digest_items_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_deadline_reminder_selftest: { Args: { p_tenant: string }; Returns: Json }
+      decision_deadline_rearm_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_creator_deadline_warning_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_inbox_hygiene_selftest: { Args: { p_tenant: string }; Returns: Json }
       mark_decision_request_notifications_read: {

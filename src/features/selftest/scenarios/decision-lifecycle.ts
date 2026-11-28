@@ -36,6 +36,7 @@ export const decisionLifecycleScenario: TestScenario = {
     "Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen",
     "Anfrage-, Kommentar-, Reaktions-, Ersteller-Antwort- und Abschlussmeldung entstehen im Mandanten der Entscheidung",
     "Der Ersteller erhält vor Ablauf und einmalig bei Überfälligkeit eine Warnung mit der Zahl fehlender Antworten und offener Rückfragen samt Alter der ältesten",
+    "Eine verlängerte Frist setzt die gespeicherten Erinnerungsstufen zurück, sodass Teilnehmende und Ersteller erneut erinnert werden; beim Vorziehen entstehen keine Doppelungen",
     "Der Tagesüberblick nennt offene Rückfragen einer eigenen Entscheidung samt Alter der ältesten",
     "Teilnehmer-Insert stellt genau eine Einladungs-Versandzeile ein, die der Worker übernimmt und verbucht",
   ],
@@ -508,6 +509,21 @@ export const decisionLifecycleScenario: TestScenario = {
           message: report?.ok === true
             ? "24-h- und 2-h-Erinnerung kommen je einmal, Ruhezeiten verschieben den Versand und verhindern keine Erinnerung dauerhaft."
             : (report?.skipped ?? report?.message ?? "Frist-Erinnerungs-Selbsttest fehlgeschlagen."),
+          details: report?.checks,
+        };
+      },
+    },
+    {
+      id: "deadline-rearm", label: "Verlängerte Frist erinnert Teilnehmende und Ersteller erneut", kind: "workflow",
+      run: async (ctx) => {
+        const { data, error } = await supabase.rpc("decision_deadline_rearm_selftest", { p_tenant: ctx.tenantId });
+        if (error) return { ok: false, message: describeError(error) };
+        const report = data as { ok?: boolean; message?: string; skipped?: string; checks?: Record<string, unknown> } | null;
+        return {
+          ok: report?.ok === true,
+          message: report?.ok === true
+            ? "Eine spätere Frist setzt die gespeicherten Stufen zurück; 24-h-Erinnerung und Ersteller-Warnung greifen zur neuen Frist erneut, beim Vorziehen entstehen keine Doppelungen."
+            : (report?.skipped ?? report?.message ?? "Fristverlängerungs-Selbsttest fehlgeschlagen."),
           details: report?.checks,
         };
       },

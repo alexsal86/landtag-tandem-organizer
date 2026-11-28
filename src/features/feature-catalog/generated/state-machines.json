@@ -5,7 +5,7 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 1022,
+    "migrationCount": 1024,
     "tsModules": [
       "src/components/letters/types.ts"
     ]
@@ -5312,7 +5312,8 @@
             "insert:supabase/migrations/20261113150000_employee_hr_lifecycle.sql",
             "write:supabase/migrations/20260209100456_1f1d79dc-a773-4379-82bd-99a16d806d49.sql",
             "write:supabase/migrations/20261128210000_decision_notification_tenant.sql",
-            "guard:supabase/migrations/20261128217000_decision_lifecycle_notifications.sql"
+            "guard:supabase/migrations/20261128217000_decision_lifecycle_notifications.sql",
+            "guard:supabase/migrations/20261128252000_decision_deadline_rearm.sql"
           ]
         },
         {
@@ -5340,7 +5341,8 @@
             "insert:supabase/migrations/20261128226000_decision_quick_response_options.sql",
             "write:supabase/migrations/20260209100456_1f1d79dc-a773-4379-82bd-99a16d806d49.sql",
             "write:supabase/migrations/20261128210000_decision_notification_tenant.sql",
-            "guard:supabase/migrations/20261128217000_decision_lifecycle_notifications.sql"
+            "guard:supabase/migrations/20261128217000_decision_lifecycle_notifications.sql",
+            "guard:supabase/migrations/20261128252000_decision_deadline_rearm.sql"
           ]
         }
       ],
@@ -5407,6 +5409,46 @@
         }
       ],
       "guards": [
+        {
+          "trigger": "rearm_decision_deadline_reminders",
+          "function": "rearm_decision_deadline_reminders",
+          "timing": "after",
+          "events": "update of response_deadline",
+          "source": "supabase/migrations/20261128252000_decision_deadline_rearm.sql",
+          "functionSource": "supabase/migrations/20261128252000_decision_deadline_rearm.sql",
+          "kind": "trigger",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": false,
+          "message": null,
+          "checks": [
+            {
+              "side": "NEW",
+              "operator": "not in",
+              "negated": true,
+              "values": [
+                "active",
+                "open"
+              ]
+            }
+          ],
+          "states": [
+            "active",
+            "open"
+          ],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "active",
+            "archived",
+            "open"
+          ],
+          "allowedFrom": [
+            "active",
+            "archived",
+            "open"
+          ]
+        },
         {
           "trigger": "trg_decision_lifecycle_notification",
           "function": "notify_decision_lifecycle_changes",

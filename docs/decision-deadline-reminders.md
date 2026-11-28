@@ -49,6 +49,19 @@ Die Warnung nutzt den Meldungstyp `task_decision_deadline_reminder` mit
 `creator_warning=true` und `missing_count` im `data`-Feld. Die Oberfläche bietet dafür
 keine Schnellantworten an; der Klick öffnet die Entscheidung.
 
+## Friständerung
+
+Wird die Frist einer offenen Entscheidung nach hinten verschoben oder erstmals gesetzt,
+löscht der Trigger `rearm_decision_deadline_reminders` (AFTER UPDATE OF
+`response_deadline`) alle gespeicherten Stufen der Entscheidung. Der stündliche Lauf
+legt danach nur die Stufen neu an, die zur neuen Frist passen: Ist die neue Frist noch
+weiter als 24 Stunden entfernt, wird zunächst nicht erinnert; rückt sie näher, kommen
+Teilnehmer- und Ersteller-Warnung erneut.
+
+Wird die Frist vorgezogen, bleiben die Stufen stehen. So erhält niemand eine bereits
+versendete 24-h-Warnung ein zweites Mal; nur eine zusätzlich passende Stufe (etwa `2h`)
+kommt hinzu.
+
 ## Ruhezeiten und Zustellung
 
 - Liegt der Lauf in den Ruhezeiten der Person (Europe/Berlin, auch über Mitternacht),
@@ -66,6 +79,12 @@ keine Schnellantworten an; der Klick öffnet die Entscheidung.
 `decision_deadline_reminder_selftest` prüft je einmalige 24-h- und 2-h-Erinnerung,
 Deduplizierung beim zweiten Lauf, Aussetzen während 22:00–08:00 und den Versand nach
 Ende der Ruhezeit. Der Szenario-Schritt heißt `deadline-reminders`.
+
+`decision_deadline_rearm_selftest` prüft, dass eine Verlängerung die gespeicherten
+Stufen räumt, dass für die neue, weiter entfernte Frist nicht vorzeitig erinnert wird,
+dass Teilnehmer- und Ersteller-Warnung zur neuen Frist erneut greifen und dass ein
+Vorziehen der Frist keine doppelte 24-h- oder Ersteller-Warnung erzeugt. Der
+Szenario-Schritt heißt `deadline-rearm`.
 
 `decision_creator_deadline_warning_selftest` prüft die Ersteller-Warnung vor Ablauf,
 die einmalige Überfälligkeitswarnung mit neu berechneter Zahl, die offene Rückfrage mit

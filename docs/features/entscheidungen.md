@@ -62,7 +62,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 11 | 11 | — |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 11 | 12 | — |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 8 | — |
 
 ## Selbsttest-Schritte
@@ -88,6 +88,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `digest-items` | Digest zeigt Einzelmeldungen mit Person und Sprungziel | workflow | — |
 | `decision-lifecycle` | `comment-mentions` | Direkte Erwähnungen sofort und außerhalb des Digests zustellen | workflow | — |
 | `decision-lifecycle` | `deadline-reminders` | Frist-Erinnerungen 24 h/2 h einmalig und mit Ruhezeiten | workflow | — |
+| `decision-lifecycle` | `deadline-rearm` | Verlängerte Frist erinnert Teilnehmende und Ersteller erneut | workflow | — |
 | `decision-lifecycle` | `creator-deadline-warnings` | Ersteller-Warnung vor Ablauf, bei Überfälligkeit und zu offenen Rückfragen | workflow | — |
 | `decision-lifecycle` | `inbox-hygiene` | Anfrage-Meldungen beim Öffnen lesen und beim Archivieren verfallen lassen | workflow | — |
 | `decision-lifecycle` | `digest-result-person` | Digest-Ergebnis ohne Person, Kommentar und Reaktion mit Person | workflow | — |
@@ -130,8 +131,9 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 7. Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen
 8. Anfrage-, Kommentar-, Reaktions-, Ersteller-Antwort- und Abschlussmeldung entstehen im Mandanten der Entscheidung
 9. Der Ersteller erhält vor Ablauf und einmalig bei Überfälligkeit eine Warnung mit der Zahl fehlender Antworten und offener Rückfragen samt Alter der ältesten
-10. Der Tagesüberblick nennt offene Rückfragen einer eigenen Entscheidung samt Alter der ältesten
-11. Teilnehmer-Insert stellt genau eine Einladungs-Versandzeile ein, die der Worker übernimmt und verbucht
+10. Eine verlängerte Frist setzt die gespeicherten Erinnerungsstufen zurück, sodass Teilnehmende und Ersteller erneut erinnert werden; beim Vorziehen entstehen keine Doppelungen
+11. Der Tagesüberblick nennt offene Rückfragen einer eigenen Entscheidung samt Alter der ältesten
+12. Teilnehmer-Insert stellt genau eine Einladungs-Versandzeile ein, die der Worker übernimmt und verbucht
 
 ### `task-lifecycle`
 
@@ -486,7 +488,7 @@ Freiwilliger morgendlicher Überblick über alle offenen Entscheidungen einer Pe
 - Keine.
 
 ### `decisions.deadline-reminders` — Frist-Erinnerungen vor Ablauf
-Erinnert offene Teilnehmende ohne Antwort 24 Stunden und 2 Stunden vor der Frist, höchstens einmal je Stufe. Ruhezeiten verschieben den Versand; die Erinnerung wird nicht gebündelt und bietet Schnellantworten.
+Erinnert offene Teilnehmende ohne Antwort 24 Stunden und 2 Stunden vor der Frist, höchstens einmal je Stufe. Wird die Frist einer offenen Entscheidung verlängert oder erstmals gesetzt, setzt ein Trigger die gespeicherten Stufen zurück; der nächste Lauf erinnert dann erneut nach der neuen Frist. Beim Vorziehen bleiben versendete Stufen stehen, damit nichts doppelt kommt. Ruhezeiten verschieben den Versand; die Erinnerung wird nicht gebündelt und bietet Schnellantworten.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -499,7 +501,7 @@ Erinnert offene Teilnehmende ohne Antwort 24 Stunden und 2 Stunden vor der Frist
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `dispatch_decision_deadline_reminders`, `decision_quiet_hours_active`, `decision_deadline_reminder_selftest`
+- **Datenbankfunktionen:** `dispatch_decision_deadline_reminders`, `rearm_decision_deadline_reminders`, `decision_quiet_hours_active`, `decision_deadline_reminder_selftest`, `decision_deadline_rearm_selftest`
 - **Tabellen:** `decision_deadline_reminders`, `task_decisions`, `task_decision_participants`, `notifications`
 - **Abhängigkeiten:** `decisions.notification-digest`
 - **Selbsttests:** `decision-lifecycle`
@@ -512,6 +514,8 @@ Erinnert offene Teilnehmende ohne Antwort 24 Stunden und 2 Stunden vor der Frist
 
 - supabase/migrations/20261128235000_decision_deadline_reminders.sql
 - supabase/migrations/20261128236000_decision_deadline_reminders_selftest.sql
+- supabase/migrations/20261128252000_decision_deadline_rearm.sql
+- supabase/migrations/20261128253000_decision_deadline_rearm_selftest.sql
 - src/features/selftest/scenarios/decision-lifecycle.ts
 
 **Bekannte Einschränkungen**
@@ -556,7 +560,7 @@ Warnt den Ersteller, wenn die Antwortfrist innerhalb von 24 Stunden endet, und g
 
 **Bekannte Einschränkungen**
 
-- Nicht geprüft: echter Cron-Lauf, Push-Versand, Browserdarstellung und die Wirkung auf die Antwortquote. Eine nach bereits versendeter Ersteller-Stufe verlängerte Frist löst keine neue Warnung aus. Offene Rückfragen erscheinen nur in Entscheidungen mit gesetzter Antwortfrist.
+- Nicht geprüft: echter Cron-Lauf, Push-Versand, Browserdarstellung und die Wirkung auf die Antwortquote. Die erneute Warnung nach einer Fristverlängerung hängt am gemeinsamen Reset aller Friststufen in decisions.deadline-reminders. Offene Rückfragen erscheinen nur in Entscheidungen mit gesetzter Antwortfrist.
 
 **Offene Prüfpunkte**
 

@@ -405,7 +405,7 @@
       "id": "decisions.deadline-reminders",
       "subarea": "Meldungen",
       "name": "Frist-Erinnerungen vor Ablauf",
-      "description": "Erinnert offene Teilnehmende ohne Antwort 24 Stunden und 2 Stunden vor der Frist, höchstens einmal je Stufe. Ruhezeiten verschieben den Versand; die Erinnerung wird nicht gebündelt und bietet Schnellantworten.",
+      "description": "Erinnert offene Teilnehmende ohne Antwort 24 Stunden und 2 Stunden vor der Frist, höchstens einmal je Stufe. Wird die Frist einer offenen Entscheidung verlängert oder erstmals gesetzt, setzt ein Trigger die gespeicherten Stufen zurück; der nächste Lauf erinnert dann erneut nach der neuen Frist. Beim Vorziehen bleiben versendete Stufen stehen, damit nichts doppelt kommt. Ruhezeiten verschieben den Versand; die Erinnerung wird nicht gebündelt und bietet Schnellantworten.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
@@ -414,12 +414,16 @@
       "evidence": [
         "supabase/migrations/20261128235000_decision_deadline_reminders.sql",
         "supabase/migrations/20261128236000_decision_deadline_reminders_selftest.sql",
+        "supabase/migrations/20261128252000_decision_deadline_rearm.sql",
+        "supabase/migrations/20261128253000_decision_deadline_rearm_selftest.sql",
         "src/features/selftest/scenarios/decision-lifecycle.ts"
       ],
       "rpcs": [
         "dispatch_decision_deadline_reminders",
+        "rearm_decision_deadline_reminders",
         "decision_quiet_hours_active",
-        "decision_deadline_reminder_selftest"
+        "decision_deadline_reminder_selftest",
+        "decision_deadline_rearm_selftest"
       ],
       "tables": [
         "decision_deadline_reminders",
@@ -490,7 +494,7 @@
         "docs/decision-deadline-reminders.md"
       ],
       "limitations": [
-        "Nicht geprüft: echter Cron-Lauf, Push-Versand, Browserdarstellung und die Wirkung auf die Antwortquote. Eine nach bereits versendeter Ersteller-Stufe verlängerte Frist löst keine neue Warnung aus. Offene Rückfragen erscheinen nur in Entscheidungen mit gesetzter Antwortfrist."
+        "Nicht geprüft: echter Cron-Lauf, Push-Versand, Browserdarstellung und die Wirkung auf die Antwortquote. Die erneute Warnung nach einer Fristverlängerung hängt am gemeinsamen Reset aller Friststufen in decisions.deadline-reminders. Offene Rückfragen erscheinen nur in Entscheidungen mit gesetzter Antwortfrist."
       ]
     },
     {
