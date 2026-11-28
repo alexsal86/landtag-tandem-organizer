@@ -34,7 +34,7 @@ export function DashboardDaylight() {
   }, []);
 
   return (
-    <div aria-hidden="true" className="pointer-events-none sticky top-0 -z-10 h-0">
+    <div aria-hidden="true" className="pointer-events-none relative -z-10 h-0">
       <div ref={ref} className="dashboard-daylight" />
     </div>
   );
