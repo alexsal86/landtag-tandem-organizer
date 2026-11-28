@@ -526,6 +526,21 @@ export const decisionLifecycleScenario: TestScenario = {
       },
     },
     {
+      id: "digest-result-person", label: "Digest-Ergebnis ohne Person, Kommentar und Reaktion mit Person", kind: "workflow",
+      run: async (ctx) => {
+        const { data, error } = await supabase.rpc("decision_digest_result_actor_selftest", { p_tenant: ctx.tenantId });
+        if (error) return { ok: false, message: describeError(error) };
+        const report = data as { ok?: boolean; message?: string; skipped?: string; checks?: Record<string, unknown> } | null;
+        return {
+          ok: report?.ok === true,
+          message: report?.ok === true
+            ? "Ergebniseinträge erscheinen ohne Person; Kommentar- und Reaktionseinträge behalten ihre Person."
+            : (report?.skipped ?? report?.message ?? "Digest-Personen-Selbsttest fehlgeschlagen."),
+          details: report?.checks,
+        };
+      },
+    },
+    {
       id: "daily-digest", label: "Optionaler Tagesüberblick über mehrere Entscheidungen", kind: "workflow",
       run: async (ctx) => {
         const { data, error } = await supabase.rpc("decision_daily_digest_selftest", { p_tenant: ctx.tenantId });

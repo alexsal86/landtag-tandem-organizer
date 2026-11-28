@@ -87,6 +87,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `comment-mentions` | Direkte Erwähnungen sofort und außerhalb des Digests zustellen | workflow | — |
 | `decision-lifecycle` | `deadline-reminders` | Frist-Erinnerungen 24 h/2 h einmalig und mit Ruhezeiten | workflow | — |
 | `decision-lifecycle` | `inbox-hygiene` | Anfrage-Meldungen beim Öffnen lesen und beim Archivieren verfallen lassen | workflow | — |
+| `decision-lifecycle` | `digest-result-person` | Digest-Ergebnis ohne Person, Kommentar und Reaktion mit Person | workflow | — |
 | `decision-lifecycle` | `daily-digest` | Optionaler Tagesüberblick über mehrere Entscheidungen | workflow | — |
 | `decision-lifecycle` | `notification-metrics` | Zustellungen, Abschaltquote, Antwortzeit, Anstupser und Trigger-Fehler messen | workflow | — |
 | `decision-lifecycle` | `notification-actions` | Aus der Meldung abstimmen und Antwort aktualisieren | workflow | — |
@@ -513,7 +514,7 @@ Erinnert offene Teilnehmende ohne Antwort 24 Stunden und 2 Stunden vor der Frist
 - Keine.
 
 ### `decisions.digest-items` — Aufklappbarer Digest mit Einzelmeldungen
-Der Digest speichert seine gebündelten Kommentare, Antworten, Reaktionen und Ergebnisse als Liste mit Person, Kommentar-ID, Emoji und Auszug. Im Benachrichtigungscenter lässt er sich aufklappen und springt je Eintrag zur Entscheidung.
+Der Digest speichert seine gebündelten Kommentare, Antworten, Reaktionen und Ergebnisse als Liste mit Person, Kommentar-ID, Emoji und Auszug. Ergebnisse erscheinen ohne Person, Kommentare und Reaktionen behalten sie. Im Benachrichtigungscenter lässt er sich aufklappen und springt je Eintrag zur Entscheidung.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -526,7 +527,7 @@ Der Digest speichert seine gebündelten Kommentare, Antworten, Reaktionen und Er
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `flush_decision_notification_digests`, `decision_digest_items_selftest`
+- **Datenbankfunktionen:** `flush_decision_notification_digests`, `decision_digest_items_selftest`, `decision_digest_result_actor_selftest`
 - **Tabellen:** `notifications`, `task_decision_comments`, `task_decision_comment_reactions`
 - **Abhängigkeiten:** `decisions.notification-digest`
 - **Selbsttests:** `decision-lifecycle`
@@ -539,6 +540,8 @@ Der Digest speichert seine gebündelten Kommentare, Antworten, Reaktionen und Er
 
 - supabase/migrations/20261128233000_decision_digest_items.sql
 - supabase/migrations/20261128234000_decision_digest_items_selftest.sql
+- supabase/migrations/20261128242000_decision_digest_result_actor_fix.sql
+- supabase/migrations/20261128243000_decision_digest_result_actor_selftest.sql
 - src/components/notifications/NotificationCenter.tsx
 - src/features/selftest/scenarios/decision-lifecycle.ts
 

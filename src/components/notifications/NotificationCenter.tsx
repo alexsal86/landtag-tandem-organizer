@@ -165,7 +165,9 @@ const DigestItemList = ({ notification, onClose }: { notification: Notification;
         <ul className="mt-1 space-y-1 border-l pl-2">
           {items.map((item, index) => {
             const label = DIGEST_ITEM_LABELS[item.type ?? ''] ?? 'Meldung';
-            const person = item.actor_name?.trim();
+            // Ergebniseinträge haben keine Person; alte Digests können noch den
+            // früheren Fallback „Ein Teammitglied“ enthalten.
+            const person = item.type === 'task_decision_completed' ? null : item.actor_name?.trim();
             return (
               <li key={item.notification_id ?? `${index}`}>
                 <button

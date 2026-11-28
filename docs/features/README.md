@@ -25,7 +25,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | Funktionen ohne Dokumentationsverweis | 178 |
 | Funktionen mit bekannten Einschränkungen | 100 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
-| Technische Zuordnungen | 1405 |
+| Technische Zuordnungen | 1406 |
 
 ## Funktionsbereiche
 

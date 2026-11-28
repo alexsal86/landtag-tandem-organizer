@@ -20,12 +20,16 @@ Die Liste wird beim Flush aus den ersetzten Meldungen gebildet. Die bisherigen
 Im Benachrichtigungscenter zeigt die Digest-Meldung „N Einzelmeldungen anzeigen“. Aufgeklappt
 erscheinen Person, Art, Reaktion und Kommentarauszug; ein Klick springt über
 `/decisions?highlight=<decision_id>&comment=<comment_id>` zur Entscheidung. Ergebnisse
-haben keine Person und springen nur zur Entscheidung.
+haben keine Person und werden nur als „Ergebnis“ angezeigt; die UI ignoriert auch den
+früheren Fallback „Ein Teammitglied“ in alten Digests. Kommentar- und Reaktionseinträge
+behalten ihre Person.
 
 ## Prüfung
 
 `decision_digest_items_selftest` prüft drei Einträge (Kommentar, Reaktion, Ergebnis),
 Person und Auszug beim Kommentar, Emoji bei der Reaktion und die Entscheidungs-ID für den
-Deep Link. Der Szenario-Schritt heißt `digest-items`.
+Deep Link. `decision_digest_result_actor_selftest` prüft zusätzlich, dass das Ergebnis
+keine Person hat, Kommentar und Reaktion sie aber behalten. Die Szenario-Schritte heißen
+`digest-items` und `digest-result-person`.
 
 Nicht geprüft: Browserdarstellung, echter Push-Versand und ein Cron-Lauf.

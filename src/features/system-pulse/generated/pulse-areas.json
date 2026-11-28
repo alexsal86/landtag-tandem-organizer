@@ -1425,6 +1425,10 @@
               "label": "Anfrage-Meldungen beim Öffnen lesen und beim Archivieren verfallen lassen"
             },
             {
+              "id": "digest-result-person",
+              "label": "Digest-Ergebnis ohne Person, Kommentar und Reaktion mit Person"
+            },
+            {
               "id": "daily-digest",
               "label": "Optionaler Tagesüberblick über mehrere Entscheidungen"
             },

@@ -441,7 +441,7 @@
       "id": "decisions.digest-items",
       "subarea": "Meldungen",
       "name": "Aufklappbarer Digest mit Einzelmeldungen",
-      "description": "Der Digest speichert seine gebündelten Kommentare, Antworten, Reaktionen und Ergebnisse als Liste mit Person, Kommentar-ID, Emoji und Auszug. Im Benachrichtigungscenter lässt er sich aufklappen und springt je Eintrag zur Entscheidung.",
+      "description": "Der Digest speichert seine gebündelten Kommentare, Antworten, Reaktionen und Ergebnisse als Liste mit Person, Kommentar-ID, Emoji und Auszug. Ergebnisse erscheinen ohne Person, Kommentare und Reaktionen behalten sie. Im Benachrichtigungscenter lässt er sich aufklappen und springt je Eintrag zur Entscheidung.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
@@ -450,12 +450,15 @@
       "evidence": [
         "supabase/migrations/20261128233000_decision_digest_items.sql",
         "supabase/migrations/20261128234000_decision_digest_items_selftest.sql",
+        "supabase/migrations/20261128242000_decision_digest_result_actor_fix.sql",
+        "supabase/migrations/20261128243000_decision_digest_result_actor_selftest.sql",
         "src/components/notifications/NotificationCenter.tsx",
         "src/features/selftest/scenarios/decision-lifecycle.ts"
       ],
       "rpcs": [
         "flush_decision_notification_digests",
-        "decision_digest_items_selftest"
+        "decision_digest_items_selftest",
+        "decision_digest_result_actor_selftest"
       ],
       "tables": [
         "notifications",

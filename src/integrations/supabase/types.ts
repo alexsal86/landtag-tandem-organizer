@@ -19428,6 +19428,7 @@ export type Database = {
       decision_invitation_dispatch_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_delivery_preference_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_daily_digest_selftest: { Args: { p_tenant: string }; Returns: Json }
+      decision_digest_result_actor_selftest: { Args: { p_tenant: string }; Returns: Json }
       dispatch_decision_daily_digests: { Args: { _at?: string }; Returns: number }
       set_decision_daily_digest: { Args: { _tenant_id: string; _enabled: boolean }; Returns: Json }
       decision_digest_items_selftest: { Args: { p_tenant: string }; Returns: Json }
