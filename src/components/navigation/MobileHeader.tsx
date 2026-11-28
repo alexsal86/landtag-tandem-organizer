@@ -118,6 +118,7 @@ export function MobileHeader() {
                     setMobileNavOpen(false);
                   }}
                   isMobile={true}
+                  onFollowHelpHint={() => setMobileNavOpen(false)}
                 />
               </div>
             </SheetContent>

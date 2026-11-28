@@ -8,8 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { debugConsole } from "@/utils/debugConsole";
 import { notify } from "@/lib/notify";
-import { EMPLOYEE_MEETING_HELP_CONTENT } from "@/config/helpContent";
-import { PageHelpButton } from "@/components/shared/PageHelpButton";
 
 export default function EmployeeMeetingDetail() {
   const { meetingId, subId } = useParams<{ meetingId?: string; subId?: string }>();
@@ -86,7 +84,6 @@ export default function EmployeeMeetingDetail() {
           <ArrowLeft className="h-4 w-4" />
           Zurück
         </Button>
-        <PageHelpButton {...EMPLOYEE_MEETING_HELP_CONTENT} />
       </div>
       <EmployeeMeetingProtocol key={resolvedMeetingId} meetingId={resolvedMeetingId} onBack={() => navigate("/employee")} />
     </div>

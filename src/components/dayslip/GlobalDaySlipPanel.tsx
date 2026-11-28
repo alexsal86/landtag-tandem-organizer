@@ -5,7 +5,7 @@ import { DAY_SLIP_APPEND_EVENT, withDaySlipSourceIcon, type DaySlipAppendDetail 
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { sourcePath, normalizeStore, emptyDay, missingDaySlipLines } from "./daySlipState";
 import { resolveDayView, openPastDays, openLineCount, snoozePresets } from "./daySlipNavigation";
@@ -26,8 +26,6 @@ import { DaySlipCommandHelp } from "@/components/dayslip/DaySlipCommandHelp";
 import { DaySlipPages } from "@/components/dayslip/DaySlipPages";
 import { DaySlipMoodTrend } from "@/components/dayslip/DaySlipMoodTrend";
 import { useDaySlipLayout } from "@/components/dayslip/DaySlipLayout";
-import { PageHelpButton } from "@/components/shared/PageHelpButton";
-import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
 import { useDaySlipStore } from "@/components/dayslip/hooks/useDaySlipStore";
 import {
   type DayTemplate, type TaskOptions,
@@ -44,34 +42,6 @@ const archiveBadgeClass = (status: "done" | "assigned" | "snoozed" | "open") =>
 function DaySlipSurface({ children }: { children: ReactNode }) {
   const layout = useDaySlipLayout();
   return layout?.docked && layout.host ? createPortal(children, layout.host) : children;
-}
-
-function WorkspaceHelpBesideDaySlip({ daySlipOpen, reservedWidth }: { daySlipOpen: boolean; reservedWidth: number }) {
-  const { pathname, search } = useLocation();
-  const [tucked, setTucked] = useState(false);
-  const isWorkspace = pathname === "/mywork";
-  const tab = new URLSearchParams(search).get("tab") ?? "dashboard";
-  const help = Object.hasOwn(MYWORK_HELP_CONTENT, tab) ? MYWORK_HELP_CONTENT[tab] : undefined;
-
-  useEffect(() => {
-    if (!isWorkspace) return;
-    const timer = window.setTimeout(() => setTucked(true), 3000);
-    return () => {
-      window.clearTimeout(timer);
-      setTucked(false);
-    };
-  }, [isWorkspace]);
-
-  if (!isWorkspace || !help) return null;
-
-  return (
-    <div style={{ right: reservedWidth ? reservedWidth + 24 : 100 }}
-      className={cn("fixed bottom-6 z-[49] transition-transform duration-300 motion-reduce:transition-none",
-        daySlipOpen && !reservedWidth && "max-lg:hidden",
-        tucked && !reservedWidth && "translate-x-3 focus-within:translate-x-0 motion-reduce:translate-x-0")}>
-      <PageHelpButton title={help.title} description={help.description} features={help.features} />
-    </div>
-  );
 }
 
 export function GlobalDaySlipPanel() {
@@ -899,7 +869,6 @@ function DaySlipPanel({ userId, tenantId }: { userId: string; tenantId: string }
         <div className="fixed bottom-24 right-6 z-50 rounded-lg border border-palette-green/40 bg-palette-green/10 px-3 py-1.5 text-xs text-palette-green shadow-lg backdrop-blur">{completionMessage}</div>
       )}
 
-      <WorkspaceHelpBesideDaySlip daySlipOpen={open} reservedWidth={layout?.reservedWidth ?? 0} />
       {!(docked && open) && <button type="button" className={cn(
         open && "max-lg:hidden",
         "fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full border shadow-lg backdrop-blur transition-[transform,background-color,box-shadow] duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",

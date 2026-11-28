@@ -110,7 +110,8 @@ const availableQuickPages: QuickAccessPage[] = [
 export function AppNavigation({ 
   activeSection, 
   onSectionChange, 
-  isMobile
+  isMobile,
+  onFollowHelpHint,
 }: NavigationProps) {
   const { navigationCounts, markNavigationAsVisited } = useNavigationNotifications();
   const { totalUnreadCount: matrixUnreadCount, hasCredentials: hasChatCredentials, unreadRooms, recentRoom } = useMatrixUnread();
@@ -1248,7 +1249,7 @@ export function AppNavigation({
         </div>
       </nav>
       
-      <HelpDialog open={helpDialogOpen} onOpenChange={setHelpDialogOpen} />
+      <HelpDialog open={helpDialogOpen} onOpenChange={setHelpDialogOpen} onFollowHint={onFollowHelpHint} />
     </TooltipProvider>
   );
 }

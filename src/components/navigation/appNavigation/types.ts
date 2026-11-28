@@ -7,6 +7,7 @@ export interface NavigationProps {
   activeSection: string;
   onSectionChange: (section: string) => void;
   isMobile?: boolean;
+  onFollowHelpHint?: () => void;
 }
 
 export type UpcomingAppointmentItem = {
