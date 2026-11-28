@@ -41,7 +41,7 @@ export function appointmentSummary(events: SummaryAppointment[], now = new Date(
     ? "Heute stehen keine weiteren Termine an." : "Heute und morgen stehen keine weiteren Termine an.";
   const next = events.filter(event => berlinDay(new Date(event.start_time)) > today)
     .sort((a, b) => Date.parse(a.start_time) - Date.parse(b.start_time))[0];
-  if (!next) return text + " Es ist kein weiterer Termin eingetragen.";
+  if (!next) return dayEvents.length ? text + " Es ist kein weiterer Termin eingetragen." : text;
   const tomorrow = new Date(Date.parse(today + "T12:00:00Z") + 86400_000).toISOString().slice(0, 10);
   const date = berlinDay(new Date(next.start_time)) === tomorrow ? "Morgen"
     : new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", weekday: "long", day: "numeric", month: "long" }).format(new Date(next.start_time));
