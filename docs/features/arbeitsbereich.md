@@ -466,7 +466,7 @@ Steuert Anzeige- und Versandpräferenzen je Benachrichtigungstyp und verwaltet z
 - Keine.
 
 ### `search.global` — Globale Suche und Befehlspalette
-Durchsucht Kontakte, Aufgaben, Dokumente und weitere Objekte über eine Befehlspalette und protokolliert Suchanfragen für die Auswertung.
+Durchsucht Kontakte, Aufgaben, Dokumente und weitere Objekte über eine Befehlspalette, öffnet Treffer über eine zentrale Ziel-Registry und protokolliert Suchanfragen für die Auswertung.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -476,7 +476,7 @@ Durchsucht Kontakte, Aufgaben, Dokumente und weitere Objekte über eine Befehlsp
 - **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
 - **Routen:** —
 - **Frontend-Komponenten:** `src/components/search/GlobalSearchCommand.tsx`, `src/components/search/GlobalQuickNoteDialog.tsx`
-- **Services:** `src/components/search/postgrestSearch.ts`
+- **Services:** `src/components/search/postgrestSearch.ts`, `src/lib/appTargets.ts`
 - **Hooks:** —
 - **Edge Functions:** —
 - **Datenbankfunktionen:** —
@@ -492,14 +492,18 @@ Durchsucht Kontakte, Aufgaben, Dokumente und weitere Objekte über eine Befehlsp
 
 - src/components/search/GlobalSearchCommand.tsx
 - src/components/search/postgrestSearch.ts
+- src/lib/appTargets.ts
 
 **Bekannte Einschränkungen**
 
-- Keine.
+- Die Suche bleibt ein PostgREST-Fan-out je Entität: kein serverseitiges Ranking, keine Tippfehler-Toleranz und keine Volltextsuche über Dokument- oder Briefinhalte.
+- Fehlgeschlagene Quellen werden sichtbar gemeldet und können erneut geladen werden; die übrigen Bereiche bleiben nutzbar.
 
 **Offene Prüfpunkte**
 
 - Die Suche nutzt PostgREST-Abfragen je Entität; eine vollständige Liste der durchsuchten Tabellen ist nicht zentral deklariert.
+- Sprungziele sind zentral in appTargets.ts hinterlegt; neue Trefferarten und Quick-Access-Ziele müssen dort ergänzt werden.
+- Kategorie- und Statusfilter gelten nur im gewählten Bereich, weil die Wertelisten je Bereich unterschiedlich sind.
 
 ### `quicknotes.manage` — Schnellnotizen anlegen, bearbeiten und verlinken
 Erfasst Notizen mit Priorität, Anheften, Verknüpfungen zu Entscheidungen und Aufgaben sowie Teilen mit anderen Nutzern.
