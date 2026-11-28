@@ -57,7 +57,7 @@ export function DashboardDaySummary() {
   );
   if (!user || !currentTenant) return null;
   if (schedule.isPending || decisions.loading || feedback.isLoading) {
-    return <p className="text-title font-normal text-muted-foreground" role="status">Dein Tagesüberblick wird geladen…</p>;
+    return <p className="text-xl leading-snug font-normal text-muted-foreground" role="status">Dein Tagesüberblick wird geladen…</p>;
   }
   const pendingDecisions = decisions.decisions.filter(decision => needsOwnDecision(decision)).length;
   const hasError = schedule.isError || Boolean(decisions.error) || feedback.isError;
@@ -69,7 +69,7 @@ export function DashboardDaySummary() {
   const emphasize = (text: string) => text.split(/(„[^“]+“|(?:[Ee]ine?|\d+) (?:Termine?|Entscheidung(?:en)?|Rückmeldungen?|Briefings?))/g)
     .map((part, index) => index % 2 ? <strong key={index} className="font-medium text-foreground">{part}</strong> : part);
   return (
-    <div className="max-w-5xl text-title font-normal text-muted-foreground" aria-live="polite">
+    <div className="max-w-5xl text-xl leading-snug font-normal text-muted-foreground" aria-live="polite">
       <p>{schedule.isError ? "Termine konnten nicht geladen werden." : emphasize(appointmentSummary(scheduleEvents, now))}</p>
       <p>{decisions.error || feedback.isError ? "Offene Entscheidungen und Rückmeldungen konnten nicht vollständig geladen werden."
         : emphasize(pendingSummary(pendingDecisions, feedback.pendingFeedbackCount))}</p>

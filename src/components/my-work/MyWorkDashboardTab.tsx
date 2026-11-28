@@ -226,8 +226,8 @@ export function MyWorkDashboardTab() {
   if (loading) return <LoadingState variant="card" rows={3} />;
 
   return (
-    <div key={isDeputyView ? "deputy" : "employee"} className="dashboard-motion mx-auto w-full max-w-6xl space-y-4">
-      <div className="animate-rise"><DashboardHeader showTeamRituals={isLargeScreen} /></div>
+    <div key={isDeputyView ? "deputy" : "employee"} className="dashboard-motion mx-auto flex w-full max-w-6xl flex-col gap-4">
+      <div className="mb-1 animate-rise"><DashboardHeader showTeamRituals={isLargeScreen} /></div>
       {isDeputyView && <AppointmentChangeBanner />}
       {isEmployeeView && <AppointmentChangeSentList />}
       {isEmployeeView && <PendingBriefingNotice />}
