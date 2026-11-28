@@ -16,6 +16,7 @@ import { STALE_TIME } from "@/lib/query-cache";
 import { decideFolderEntry, folderDate, folderTypes, loadSignatureFolder, type FolderEntry, type FolderType } from "./signatureFolderData";
 
 const pill = "min-h-10 rounded-full px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2";
+const compactPill = "inline-flex h-7 items-center rounded-full px-3 text-meta font-medium focus-visible:outline-2 focus-visible:outline-offset-2";
 const green = "bg-[#38761c] text-white hover:bg-[#2b5e15] disabled:opacity-50";
 const muted = "bg-muted text-foreground hover:bg-muted/75";
 const entryKey = (entry: FolderEntry) => `${entry.type}:${entry.id}:${entry.version ?? ""}`;
@@ -77,7 +78,7 @@ function SignatureFolderContent({ tenantId, userId }: { tenantId: string; userId
             <div role="group" aria-label="Vorgänge filtern" className="flex flex-wrap gap-1.5 pb-2">
               {[{ id: "all", filter: "Alle" } as const, ...folderTypes].map(category => (
                 <button key={category.id} type="button" aria-pressed={filter === category.id}
-                  className={cn(pill, filter === category.id ? "bg-[#17212b] text-white" : muted)}
+                  className={cn(compactPill, filter === category.id ? "bg-[#17212b] text-white" : muted)}
                   onClick={() => { setFilter(category.id); setExpanded(null); }}>
                   {category.filter} {category.id === "all" ? entries.length : entries.filter(entry => entry.type === category.id).length}
                 </button>
@@ -124,15 +125,15 @@ function FolderRow({ entry, open, read, toggle, decide, onDone }: {
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 sm:flex-nowrap">
         <span className={cn("shrink-0 rounded-full px-2 py-1 text-xs font-medium", category?.color)}>{category?.label}</span>
         <div className="min-w-0 grow basis-36">
-          <h4 className="break-words text-base font-semibold leading-snug">{entry.title}</h4>
-          {metadata && <p className="mt-0.5 text-sm text-muted-foreground">{metadata}</p>}
+          <h4 className="break-words text-sm font-semibold leading-snug">{entry.title}</h4>
+          {metadata && <p className="mt-0.5 text-xs text-muted-foreground">{metadata}</p>}
           {entry.reminder && <p className="mt-1.5 inline-block rounded-xl bg-amber-50 px-2.5 py-1 text-sm text-amber-900">🔔 {entry.reminder}</p>}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {read && <span className="text-xs font-medium text-[#38761c] dark:text-green-300">✓ gelesen</span>}
           <button type="button" aria-expanded={open} aria-controls={open ? panelId : undefined}
             aria-label={`${open ? "Zuklappen" : "Ansehen"} – ${entry.title}`}
-            className={cn(pill, open || read ? muted : green)} onClick={toggle}>
+            className={cn(compactPill, open || read ? muted : green)} onClick={toggle}>
             {open ? "Zuklappen" : "Ansehen"}
           </button>
         </div>
