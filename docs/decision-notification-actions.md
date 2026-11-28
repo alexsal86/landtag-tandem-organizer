@@ -5,15 +5,21 @@ und erlauben die Antwort direkt aus der Meldung.
 
 ## Direkt abstimmen
 
-`task_decision_request`- und `task_decision_digest`-Meldungen zeigen in der
-Benachrichtigungsliste die Schaltflächen **Ja**, **Nein** und **Rückfrage**. Sie rufen
-`respond_to_decision(decision_id, response_type)` auf. Die RPC prüft:
+`task_decision_request`- und `task_decision_digest`-Meldungen laden die in der
+Entscheidung konfigurierten `response_options` und zeigen deren Bezeichnungen als
+Schaltflächen. Sie rufen `respond_to_decision(decision_id, response_type, comment?)`
+auf. Optionen mit Kommentarpflicht öffnen statt eines stillen Klicks die Detailansicht.
+Die RPC prüft:
 
 - angemeldete Person und aktive Mandantenmitgliedschaft,
 - Zugriff auf die Entscheidung über `user_can_access_task_decision`,
 - Status `active`/`open`,
 - eine Teilnehmerzeile der Person,
-- Antworttyp `yes`, `no` oder `question`.
+- eine der konfigurierten Antwortoptionen (bei leerer Konfiguration die Standards
+  `yes`, `no`, `question`),
+- einen Kommentar, wenn die Option `requires_comment` setzt,
+- dass der Aufrufer nicht der Ersteller ist; die Sperre gilt damit auch für direkte
+  RPC-Aufrufe, nicht nur für die Detailansicht.
 
 Eine bestehende Antwort wird aktualisiert, nicht dupliziert. Nach dem Speichern wird die
 Meldung als gelesen markiert. Direkte Antworten sind nur für diese beiden Typen sichtbar;
@@ -36,8 +42,9 @@ Anzahl. Die Formatierung liegt in `decisionNudgeSummary` und wird im Szenario ge
 
 ## Prüfung
 
-`decision_notification_actions_selftest(p_tenant)` prüft Antwort, Aktualisierung
-derselben Zeile, ungültigen Antworttyp und eine fremde Entscheidung. Der Szenario-Schritt
+`decision_notification_actions_selftest(p_tenant)` prüft Antwort mit eigenen Optionen,
+Aktualisierung derselben Zeile, nicht konfigurierte Option, Kommentarpflicht, fremde
+Entscheidung und die Ersteller-Sperre. Der Szenario-Schritt
 `notification-actions` ruft ihn auf; `dashboard-nudges` prüft die Anzeige von Person und
 Anzahl. Nicht geprüft: echte Klicks in der Oberfläche, Scroll-Verhalten im Browser und
 der Push-Versand.

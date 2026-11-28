@@ -19327,7 +19327,7 @@ export type Database = {
       notification_metrics: { Args: { _tenant_id: string; _days?: number }; Returns: Json }
       decision_notification_actions_selftest: { Args: { p_tenant: string }; Returns: Json }
       respond_to_decision: {
-        Args: { _decision_id: string; _response_type: string }
+        Args: { _decision_id: string; _response_type: string; _comment?: string }
         Returns: Json
       }
       flush_decision_notification_digests: { Args: never; Returns: number }

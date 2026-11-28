@@ -5,7 +5,7 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 995,
+    "migrationCount": 996,
     "tsModules": [
       "src/components/letters/types.ts"
     ]
@@ -5287,6 +5287,7 @@
             "insert:supabase/migrations/20261128216000_decision_invitation_dispatch_hardening.sql",
             "insert:supabase/migrations/20261128221000_decision_notification_actions.sql",
             "insert:supabase/migrations/20261128224000_decision_notification_metrics_selftest.sql",
+            "insert:supabase/migrations/20261128226000_decision_quick_response_options.sql",
             "write:supabase/migrations/20260209100456_1f1d79dc-a773-4379-82bd-99a16d806d49.sql",
             "write:supabase/migrations/20261128210000_decision_notification_tenant.sql",
             "guard:supabase/migrations/20261128217000_decision_lifecycle_notifications.sql"
@@ -5348,7 +5349,8 @@
             "supabase/migrations/20261128215000_decision_invitation_dispatch.sql",
             "supabase/migrations/20261128216000_decision_invitation_dispatch_hardening.sql",
             "supabase/migrations/20261128221000_decision_notification_actions.sql",
-            "supabase/migrations/20261128224000_decision_notification_metrics_selftest.sql"
+            "supabase/migrations/20261128224000_decision_notification_metrics_selftest.sql",
+            "supabase/migrations/20261128226000_decision_quick_response_options.sql"
           ],
           "guards": []
         }

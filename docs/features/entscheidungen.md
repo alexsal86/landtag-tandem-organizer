@@ -424,7 +424,7 @@ Liefert je Mandant Kanalzustellungen (In-App, Push, E-Mail), Abschaltquoten je E
 - Keine.
 
 ### `decisions.notification-actions` — Meldungen bedienbar machen
-Erlaubt die Abstimmung direkt aus einer Anfrage- oder Digest-Meldung über respond_to_decision, öffnet Kommentar- und Antwortmeldungen an der konkreten Stelle und zeigt beim Anstupsen Person und Anzahl.
+Erlaubt die Abstimmung direkt aus einer Anfrage- oder Digest-Meldung über respond_to_decision mit den konfigurierten Antwortoptionen; der Ersteller ist serverseitig ausgeschlossen. Kommentar- und Antwortmeldungen öffnen die konkrete Stelle, Anstupser zeigen Person und Anzahl.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -456,7 +456,7 @@ Erlaubt die Abstimmung direkt aus einer Anfrage- oder Digest-Meldung über respo
 
 **Bekannte Einschränkungen**
 
-- Geprüft sind RPC-Verhalten und Formatierung; echte Klicks, Scrollen und Hervorhebung im Browser sowie Push sind nicht ausgeführt.
+- Geprüft sind RPC-Verhalten mit eigenen Optionen, Kommentarpflicht und Ersteller-Sperre sowie die Formatierung; echte Klicks, Scrollen und Hervorhebung im Browser sowie Push sind nicht ausgeführt.
 
 **Offene Prüfpunkte**
 

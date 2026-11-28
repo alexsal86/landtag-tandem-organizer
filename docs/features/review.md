@@ -489,7 +489,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `decisions.notification-actions`
 
-- Geprüft sind RPC-Verhalten und Formatierung; echte Klicks, Scrollen und Hervorhebung im Browser sowie Push sind nicht ausgeführt.
+- Geprüft sind RPC-Verhalten mit eigenen Optionen, Kommentarpflicht und Ersteller-Sperre sowie die Formatierung; echte Klicks, Scrollen und Hervorhebung im Browser sowie Push sind nicht ausgeführt.
 
 ### `decisions.attachments`
 
