@@ -1,6 +1,7 @@
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { buildAdminHref } from '@/lib/appTargets';
 import type { MouseEvent, JSX } from 'react';
 import {
   Bell,
@@ -188,7 +189,7 @@ const NotificationItem = ({ notification, onMarkRead, onDelete, onClose }: Notif
 
   const handleAutomationRuleClick = (event: MouseEvent<HTMLButtonElement>): void => {
     event.stopPropagation();
-    navigate(`/admin?tab=automation&highlight=${notification.data?.run_id ?? notification.data?.rule_id ?? ''}`);
+    navigate(buildAdminHref("automation", "rules"));
     onClose?.();
   };
 

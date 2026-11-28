@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { notify } from "@/lib/notify";
+import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 type ArchivedTaskRow = Tables<"archived_tasks">;
 type TaskDecisionRow = Tables<"task_decisions">;
 type TaskDecisionResponseRow = Tables<"task_decision_responses">;
@@ -68,6 +69,8 @@ export function TaskArchiveView() {
   const [archiveSettings, setArchiveSettings] = useState<ArchiveSettings>({});
   
   const [loading, setLoading] = useState(true);
+  // Archivierte Aufgaben werden aus der globalen Suche mit ?highlight=<id> verlinkt.
+  const { isHighlighted, highlightRef } = useNotificationHighlight();
 
   useEffect(() => {
     loadArchivedTasks();
@@ -487,7 +490,11 @@ export function TaskArchiveView() {
           </Card>
         ) : (
           archivedTasks.map((task) => (
-            <Card key={task.id} className="bg-card shadow-card border-border">
+            <Card
+              key={task.id}
+              ref={highlightRef(task.id)}
+              className={`bg-card shadow-card border-border ${isHighlighted(task.id) ? "notification-highlight" : ""}`}
+            >
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">

@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { notify } from "@/lib/notify";
+import { buildAdminHref } from "@/lib/appTargets";
 
 interface ExpenseCategory {
   id: string;
@@ -215,7 +216,7 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate("/admin?section=security&sub=expense")}
+              onClick={() => navigate(buildAdminHref("finance", "expense"))}
             >
               <ExternalLink className="h-3 w-3 mr-1" />
               Verwaltung
@@ -238,7 +239,7 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
         {budgetAmount <= 0 && (
           <div className="flex items-center justify-between gap-3 rounded-lg bg-palette-amber/10 p-4 text-sm text-palette-amber">
             <p>Für diesen Monat ist kein Budget hinterlegt.</p>
-            {userRole === "bueroleitung" && <button className="font-semibold underline" onClick={() => navigate("/admin?section=security&sub=expense")}>Budget festlegen</button>}
+            {userRole === "bueroleitung" && <button className="font-semibold underline" onClick={() => navigate(buildAdminHref("finance", "expense"))}>Budget festlegen</button>}
           </div>
         )}
 
