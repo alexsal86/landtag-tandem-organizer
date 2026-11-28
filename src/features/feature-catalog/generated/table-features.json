@@ -2867,6 +2867,11 @@
       "area": "entscheidungen"
     },
     {
+      "id": "decisions.digest-items",
+      "name": "Aufklappbarer Digest mit Einzelmeldungen",
+      "area": "entscheidungen"
+    },
+    {
       "id": "decisions.notification-digest",
       "name": "Gebündelte Entscheidungs-Meldungen",
       "area": "entscheidungen"
@@ -3558,6 +3563,11 @@
       "id": "decisions.comments",
       "name": "Kommentare und Reaktionen",
       "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.digest-items",
+      "name": "Aufklappbarer Digest mit Einzelmeldungen",
+      "area": "entscheidungen"
     }
   ],
   "task_decision_comments": [
@@ -3569,6 +3579,11 @@
     {
       "id": "decisions.comments",
       "name": "Kommentare und Reaktionen",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.digest-items",
+      "name": "Aufklappbarer Digest mit Einzelmeldungen",
       "area": "entscheidungen"
     }
   ],

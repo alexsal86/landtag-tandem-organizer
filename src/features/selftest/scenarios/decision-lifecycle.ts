@@ -466,6 +466,21 @@ export const decisionLifecycleScenario: TestScenario = {
       },
     },
     {
+      id: "digest-items", label: "Digest zeigt Einzelmeldungen mit Person und Sprungziel", kind: "workflow",
+      run: async (ctx) => {
+        const { data, error } = await supabase.rpc("decision_digest_items_selftest", { p_tenant: ctx.tenantId });
+        if (error) return { ok: false, message: describeError(error) };
+        const report = data as { ok?: boolean; message?: string; skipped?: string; checks?: Record<string, unknown> } | null;
+        return {
+          ok: report?.ok === true,
+          message: report?.ok === true
+            ? "Der Digest enthält Kommentar, Reaktion und Ergebnis mit Person, Kommentar-ID und Entscheidungsziel."
+            : (report?.skipped ?? report?.message ?? "Digest-Inhalts-Selbsttest fehlgeschlagen."),
+          details: report?.checks,
+        };
+      },
+    },
+    {
       id: "comment-mentions", label: "Direkte Erwähnungen sofort und außerhalb des Digests zustellen", kind: "workflow",
       run: async (ctx) => {
         const { data, error } = await supabase.rpc("decision_mention_notification_selftest", { p_tenant: ctx.tenantId });

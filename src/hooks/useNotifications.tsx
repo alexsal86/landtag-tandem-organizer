@@ -54,6 +54,18 @@ export interface NotificationData extends UnknownRecord {
   content_item_id?: string | null;
   source?: string | null;
   navigation_context?: string | null;
+  digest?: boolean | null;
+  digest_items?: DigestNotificationItem[] | null;
+}
+
+export interface DigestNotificationItem {
+  type?: string | null;
+  notification_id?: string | null;
+  actor_name?: string | null;
+  comment_id?: string | null;
+  emoji?: string | null;
+  excerpt?: string | null;
+  created_at?: string | null;
 }
 
 export interface Notification {

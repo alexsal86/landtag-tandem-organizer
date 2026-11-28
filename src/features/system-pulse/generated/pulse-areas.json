@@ -1337,6 +1337,7 @@
             "decisions.comments",
             "decisions.create",
             "decisions.delivery-preferences",
+            "decisions.digest-items",
             "decisions.notification-actions",
             "decisions.notification-digest",
             "decisions.notification-metrics",
@@ -1403,6 +1404,10 @@
             {
               "id": "delivery-preferences",
               "label": "Persönliche Zustellfrequenz und Ruhezeiten respektieren"
+            },
+            {
+              "id": "digest-items",
+              "label": "Digest zeigt Einzelmeldungen mit Person und Sprungziel"
             },
             {
               "id": "comment-mentions",

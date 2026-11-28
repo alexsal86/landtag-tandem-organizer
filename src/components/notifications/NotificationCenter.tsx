@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -20,6 +21,9 @@ import {
   Tag,
   X,
   History,
+  ChevronDown,
+  ChevronRight,
+  SmilePlus,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -114,6 +118,79 @@ const getNotificationIcon = (type: string): LucideIcon => {
     default:
       return Bell;
   }
+};
+
+const DIGEST_ITEM_LABELS: Record<string, string> = {
+  task_decision_request: 'Anfrage',
+  task_decision_comment_received: 'Kommentar',
+  task_decision_comment_reply: 'Antwort',
+  task_decision_comment_reaction_received: 'Reaktion',
+  task_decision_completed: 'Ergebnis',
+};
+
+const DigestItemList = ({ notification, onClose }: { notification: Notification; onClose?: () => void }): JSX.Element | null => {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const items = Array.isArray(notification.data?.digest_items) ? notification.data.digest_items : [];
+  const decisionId = notification.data?.decision_id;
+  const typeName = notification.notification_types?.name ?? notification.data?.type ?? '';
+
+  if (typeName !== 'task_decision_digest' || items.length === 0) return null;
+
+  const openItem = (event: MouseEvent<HTMLButtonElement>, item: (typeof items)[number]): void => {
+    event.stopPropagation();
+    if (!decisionId) return;
+    const params = new URLSearchParams({ highlight: decisionId });
+    if (item.comment_id) params.set('comment', item.comment_id);
+    navigate(`/decisions?${params.toString()}`);
+    onClose?.();
+  };
+
+  return (
+    <div className="mt-2" onClick={(event) => event.stopPropagation()}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 gap-1 px-1.5 text-xs text-muted-foreground"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        {open ? 'Einzelmeldungen ausblenden' : `${items.length} Einzelmeldungen anzeigen`}
+      </Button>
+
+      {open && (
+        <ul className="mt-1 space-y-1 border-l pl-2">
+          {items.map((item, index) => {
+            const label = DIGEST_ITEM_LABELS[item.type ?? ''] ?? 'Meldung';
+            const person = item.actor_name?.trim();
+            return (
+              <li key={item.notification_id ?? `${index}`}>
+                <button
+                  type="button"
+                  className="flex w-full items-start gap-1.5 rounded px-1 py-0.5 text-left text-xs hover:bg-accent"
+                  title="Zur Entscheidung springen"
+                  onClick={(event) => openItem(event, item)}
+                >
+                  {item.type === 'task_decision_comment_reaction_received'
+                    ? <SmilePlus className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    : <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                  <span className="min-w-0">
+                    <span className="font-medium">{person ?? label}</span>
+                    {person && <span className="text-muted-foreground"> · {label}</span>}
+                    {item.emoji && <span> {item.emoji}</span>}
+                    {item.excerpt && (
+                      <span className="block truncate text-muted-foreground">{item.excerpt}</span>
+                    )}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
 };
 
 const getPriorityBorderClass = (priority: Notification['priority']): string => {
@@ -230,6 +307,8 @@ const NotificationItem = ({ notification, onMarkRead, onDelete, onClose }: Notif
         </div>
 
         <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{notification.message}</p>
+
+        <DigestItemList notification={notification} onClose={onClose} />
 
         <DecisionQuickResponse
           notification={notification}

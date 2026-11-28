@@ -6,7 +6,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 
 ## Funktionen je Rolle
 
-### `abgeordneter` — 191 Funktionen
+### `abgeordneter` — 192 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -63,6 +63,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `decisions.change-vote` — Antwort ändern und Verlauf einsehen
 - `decisions.comments` — Kommentare und Reaktionen
 - `decisions.notification-digest` — Gebündelte Entscheidungs-Meldungen
+- `decisions.digest-items` — Aufklappbarer Digest mit Einzelmeldungen
 - `decisions.comment-mentions` — Direkte Erwähnungen
 - `decisions.delivery-preferences` — Persönliche Zustellfrequenz und Ruhezeiten
 - `decisions.notification-metrics` — Wirkung der Entscheidungs-Meldungen messen
@@ -200,7 +201,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 
-### `bueroleitung` — 236 Funktionen
+### `bueroleitung` — 237 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -271,6 +272,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `decisions.change-vote` — Antwort ändern und Verlauf einsehen
 - `decisions.comments` — Kommentare und Reaktionen
 - `decisions.notification-digest` — Gebündelte Entscheidungs-Meldungen
+- `decisions.digest-items` — Aufklappbarer Digest mit Einzelmeldungen
 - `decisions.comment-mentions` — Direkte Erwähnungen
 - `decisions.delivery-preferences` — Persönliche Zustellfrequenz und Ruhezeiten
 - `decisions.notification-metrics` — Wirkung der Entscheidungs-Meldungen messen
@@ -439,7 +441,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 - `knowledge.management` — Wissensverwaltung
 
-### `mitarbeiter` — 196 Funktionen
+### `mitarbeiter` — 197 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -498,6 +500,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `decisions.change-vote` — Antwort ändern und Verlauf einsehen
 - `decisions.comments` — Kommentare und Reaktionen
 - `decisions.notification-digest` — Gebündelte Entscheidungs-Meldungen
+- `decisions.digest-items` — Aufklappbarer Digest mit Einzelmeldungen
 - `decisions.comment-mentions` — Direkte Erwähnungen
 - `decisions.delivery-preferences` — Persönliche Zustellfrequenz und Ruhezeiten
 - `decisions.notification-metrics` — Wirkung der Entscheidungs-Meldungen messen
@@ -930,6 +933,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `decisions.comments` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `decisions.create` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `decisions.delivery-preferences` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
+| `decisions.digest-items` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `decisions.email` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `decisions.matrix` | `system`, `abgeordneter` |
 | `decisions.notification-actions` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |

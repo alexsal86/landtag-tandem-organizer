@@ -312,6 +312,47 @@
       ]
     },
     {
+      "id": "decisions.digest-items",
+      "subarea": "Meldungen",
+      "name": "Aufklappbarer Digest mit Einzelmeldungen",
+      "description": "Der Digest speichert seine gebündelten Kommentare, Antworten, Reaktionen und Ergebnisse als Liste mit Person, Kommentar-ID, Emoji und Auszug. Im Benachrichtigungscenter lässt er sich aufklappen und springt je Eintrag zur Entscheidung.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/migrations/20261128233000_decision_digest_items.sql",
+        "supabase/migrations/20261128234000_decision_digest_items_selftest.sql",
+        "src/components/notifications/NotificationCenter.tsx",
+        "src/features/selftest/scenarios/decision-lifecycle.ts"
+      ],
+      "rpcs": [
+        "flush_decision_notification_digests",
+        "decision_digest_items_selftest"
+      ],
+      "tables": [
+        "notifications",
+        "task_decision_comments",
+        "task_decision_comment_reactions"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "dependsOn": ["decisions.notification-digest"],
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "docs": [
+        "docs/decision-digest-items.md"
+      ],
+      "limitations": [
+        "Nicht geprüft: Browserdarstellung, echter Push-Versand und ein Cron-Lauf. Ergebnisse haben keine Person und führen nur zur Entscheidung."
+      ]
+    },
+    {
       "id": "decisions.comment-mentions",
       "subarea": "Kommentare",
       "name": "Direkte Erwähnungen",
