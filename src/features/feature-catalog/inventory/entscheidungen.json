@@ -453,13 +453,18 @@
         "supabase/migrations/20261128234000_decision_digest_items_selftest.sql",
         "supabase/migrations/20261128242000_decision_digest_result_actor_fix.sql",
         "supabase/migrations/20261128243000_decision_digest_result_actor_selftest.sql",
+        "supabase/migrations/20261128246000_decision_result_summary.sql",
+        "supabase/migrations/20261128247000_decision_result_summary_selftest.sql",
         "src/components/notifications/NotificationCenter.tsx",
         "src/features/selftest/scenarios/decision-lifecycle.ts"
       ],
       "rpcs": [
         "flush_decision_notification_digests",
+        "decision_result_counts",
+        "decision_result_summary",
         "decision_digest_items_selftest",
-        "decision_digest_result_actor_selftest"
+        "decision_digest_result_actor_selftest",
+        "decision_result_summary_selftest"
       ],
       "tables": [
         "notifications",
@@ -480,6 +485,51 @@
       ],
       "limitations": [
         "Nicht geprüft: Browserdarstellung, echter Push-Versand und ein Cron-Lauf. Ergebnisse haben keine Person und führen nur zur Entscheidung."
+      ]
+    },
+    {
+      "id": "decisions.result-summary",
+      "subarea": "Meldungen",
+      "name": "Aggregierte Antwortzahlen im Ergebnis",
+      "description": "Ergebnis-Meldungen und Ergebnis-Einträge im Digest zeigen die Verteilung der letzten Hauptantworten je Teilnehmer, z. B. „1 Dafür · 2 Dagegen · 1 Rückfrage“. Beschriftungen kommen aus den konfigurierten Antwortoptionen; ältere Entscheidungen nutzen Ja/Nein/Rückfrage als Fallback.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/migrations/20261128246000_decision_result_summary.sql",
+        "supabase/migrations/20261128247000_decision_result_summary_selftest.sql",
+        "src/components/notifications/NotificationCenter.tsx",
+        "src/features/selftest/scenarios/decision-lifecycle.ts"
+      ],
+      "rpcs": [
+        "decision_result_counts",
+        "decision_result_summary",
+        "decision_response_label",
+        "enrich_decision_result_notification",
+        "decision_result_summary_selftest"
+      ],
+      "tables": [
+        "task_decisions",
+        "task_decision_responses",
+        "notifications",
+        "notification_types"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "dependsOn": ["decisions.notification-digest"],
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "docs": [
+        "docs/decision-result-summary.md"
+      ],
+      "limitations": [
+        "Browserdarstellung, echter Push-Versand und Cron-Lauf sind nicht geprüft."
       ]
     },
     {

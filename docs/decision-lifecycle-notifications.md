@@ -17,7 +17,9 @@ rollen die auslösende Änderung nicht zurück.
 
 Der Ergebnis-Trigger dedupliziert je Empfänger und Entscheidung. Bei `visible_to_all`
 übernimmt die breite Anfrage die Zustellung; der Teilnehmer-Insert meldet dann nicht
-zusätzlich, sonst käme dieselbe Anfrage doppelt an.
+zusätzlich, sonst käme dieselbe Anfrage doppelt an. Ergebnis-Meldungen werden vor dem
+Insert um `result_summary` und `result_counts` ergänzt; Details stehen in
+[decision-result-summary.md](decision-result-summary.md).
 
 ## Bewusst stumm
 

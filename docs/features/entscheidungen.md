@@ -6,8 +6,8 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **20** in **9** Unterbereichen
-- implementiert: **20**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **21** in **9** Unterbereichen
+- implementiert: **21**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **3**
 - ohne Dokumentationsverweis: **9**
 
@@ -26,6 +26,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `decisions.remind` Offene Entscheidungen anmahnen | Erinnerungen | fachlich | implementiert | UI | teilweise |
 | `decisions.matrix` Entscheidungen über Matrix beantworten | Integration | integration | implementiert | systemseitig | kein Test |
 | `decisions.comment-mentions` Direkte Erwähnungen | Kommentare | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `decisions.result-summary` Aggregierte Antwortzahlen im Ergebnis | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.digest-items` Aufklappbarer Digest mit Einzelmeldungen | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.deadline-reminders` Frist-Erinnerungen vor Ablauf | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.notification-digest` Gebündelte Entscheidungs-Meldungen | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
@@ -88,6 +89,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `deadline-reminders` | Frist-Erinnerungen 24 h/2 h einmalig und mit Ruhezeiten | workflow | — |
 | `decision-lifecycle` | `inbox-hygiene` | Anfrage-Meldungen beim Öffnen lesen und beim Archivieren verfallen lassen | workflow | — |
 | `decision-lifecycle` | `digest-result-person` | Digest-Ergebnis ohne Person, Kommentar und Reaktion mit Person | workflow | — |
+| `decision-lifecycle` | `result-summary` | Ergebniszahlen in Meldung und Digest | workflow | — |
 | `decision-lifecycle` | `quiet-push-catchup` | Ruhezeit-Pushes nach Ende der Ruhezeit einmalig nachholen | workflow | — |
 | `decision-lifecycle` | `daily-digest` | Optionaler Tagesüberblick über mehrere Entscheidungen | workflow | — |
 | `decision-lifecycle` | `notification-metrics` | Zustellungen, Abschaltquote, Antwortzeit, Anstupser und Trigger-Fehler messen | workflow | — |
@@ -528,7 +530,7 @@ Der Digest speichert seine gebündelten Kommentare, Antworten, Reaktionen und Er
 - **Services:** —
 - **Hooks:** —
 - **Edge Functions:** —
-- **Datenbankfunktionen:** `flush_decision_notification_digests`, `decision_digest_items_selftest`, `decision_digest_result_actor_selftest`
+- **Datenbankfunktionen:** `flush_decision_notification_digests`, `decision_result_counts`, `decision_result_summary`, `decision_digest_items_selftest`, `decision_digest_result_actor_selftest`, `decision_result_summary_selftest`
 - **Tabellen:** `notifications`, `task_decision_comments`, `task_decision_comment_reactions`
 - **Abhängigkeiten:** `decisions.notification-digest`
 - **Selbsttests:** `decision-lifecycle`
@@ -543,12 +545,52 @@ Der Digest speichert seine gebündelten Kommentare, Antworten, Reaktionen und Er
 - supabase/migrations/20261128234000_decision_digest_items_selftest.sql
 - supabase/migrations/20261128242000_decision_digest_result_actor_fix.sql
 - supabase/migrations/20261128243000_decision_digest_result_actor_selftest.sql
+- supabase/migrations/20261128246000_decision_result_summary.sql
+- supabase/migrations/20261128247000_decision_result_summary_selftest.sql
 - src/components/notifications/NotificationCenter.tsx
 - src/features/selftest/scenarios/decision-lifecycle.ts
 
 **Bekannte Einschränkungen**
 
 - Nicht geprüft: Browserdarstellung, echter Push-Versand und ein Cron-Lauf. Ergebnisse haben keine Person und führen nur zur Entscheidung.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `decisions.result-summary` — Aggregierte Antwortzahlen im Ergebnis
+Ergebnis-Meldungen und Ergebnis-Einträge im Digest zeigen die Verteilung der letzten Hauptantworten je Teilnehmer, z. B. „1 Dafür · 2 Dagegen · 1 Rückfrage“. Beschriftungen kommen aus den konfigurierten Antwortoptionen; ältere Entscheidungen nutzen Ja/Nein/Rückfrage als Fallback.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `decision_result_counts`, `decision_result_summary`, `decision_response_label`, `enrich_decision_result_notification`, `decision_result_summary_selftest`
+- **Tabellen:** `task_decisions`, `task_decision_responses`, `notifications`, `notification_types`
+- **Abhängigkeiten:** `decisions.notification-digest`
+- **Selbsttests:** `decision-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/decision-result-summary.md`
+
+**Nachweise im Quellcode**
+
+- supabase/migrations/20261128246000_decision_result_summary.sql
+- supabase/migrations/20261128247000_decision_result_summary_selftest.sql
+- src/components/notifications/NotificationCenter.tsx
+- src/features/selftest/scenarios/decision-lifecycle.ts
+
+**Bekannte Einschränkungen**
+
+- Browserdarstellung, echter Push-Versand und Cron-Lauf sind nicht geprüft.
 
 **Offene Prüfpunkte**
 

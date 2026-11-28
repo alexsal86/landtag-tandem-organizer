@@ -55,6 +55,7 @@ export interface NotificationData extends UnknownRecord {
   source?: string | null;
   navigation_context?: string | null;
   digest?: boolean | null;
+  result_summary?: string | null;
   digest_items?: DigestNotificationItem[] | null;
 }
 
@@ -65,6 +66,7 @@ export interface DigestNotificationItem {
   comment_id?: string | null;
   emoji?: string | null;
   excerpt?: string | null;
+  result_summary?: string | null;
   created_at?: string | null;
 }
 

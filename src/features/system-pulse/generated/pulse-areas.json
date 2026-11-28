@@ -1346,6 +1346,7 @@
             "decisions.notification-metrics",
             "decisions.participants",
             "decisions.remind",
+            "decisions.result-summary",
             "decisions.vote",
             "decisions.withdraw-vote",
             "mywork.dashboard",
@@ -1427,6 +1428,10 @@
             {
               "id": "digest-result-person",
               "label": "Digest-Ergebnis ohne Person, Kommentar und Reaktion mit Person"
+            },
+            {
+              "id": "result-summary",
+              "label": "Ergebniszahlen in Meldung und Digest"
             },
             {
               "id": "quiet-push-catchup",

@@ -10,6 +10,7 @@ Die Digest-Meldung (`task_decision_digest`) enthält neben der Anzahl eine Liste
 | `comment_id` | Kommentar für den Deep Link |
 | `emoji` | Reaktion, falls vorhanden |
 | `excerpt` | gekürzter Kommentartext |
+| `result_summary` | aggregierte Antwortzahlen beim Ergebniseintrag, z. B. „1 Dafür · 2 Dagegen“ |
 | `created_at` | Zeitpunkt der Einzelmeldung |
 
 Die Liste wird beim Flush aus den ersetzten Meldungen gebildet. Die bisherigen
@@ -20,9 +21,9 @@ Die Liste wird beim Flush aus den ersetzten Meldungen gebildet. Die bisherigen
 Im Benachrichtigungscenter zeigt die Digest-Meldung „N Einzelmeldungen anzeigen“. Aufgeklappt
 erscheinen Person, Art, Reaktion und Kommentarauszug; ein Klick springt über
 `/decisions?highlight=<decision_id>&comment=<comment_id>` zur Entscheidung. Ergebnisse
-haben keine Person und werden nur als „Ergebnis“ angezeigt; die UI ignoriert auch den
-früheren Fallback „Ein Teammitglied“ in alten Digests. Kommentar- und Reaktionseinträge
-behalten ihre Person.
+haben keine Person und werden als „Ergebnis“ mit aggregierten Antwortzahlen angezeigt;
+die UI ignoriert auch den früheren Fallback „Ein Teammitglied“ in alten Digests.
+Kommentar- und Reaktionseinträge behalten ihre Person.
 
 ## Prüfung
 

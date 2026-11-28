@@ -183,6 +183,9 @@ const DigestItemList = ({ notification, onClose }: { notification: Notification;
                     <span className="font-medium">{person ?? label}</span>
                     {person && <span className="text-muted-foreground"> · {label}</span>}
                     {item.emoji && <span> {item.emoji}</span>}
+                    {item.result_summary && (
+                      <span className="text-muted-foreground"> · {item.result_summary}</span>
+                    )}
                     {item.excerpt && (
                       <span className="block truncate text-muted-foreground">{item.excerpt}</span>
                     )}

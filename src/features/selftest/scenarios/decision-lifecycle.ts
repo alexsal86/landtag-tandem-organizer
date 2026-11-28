@@ -541,6 +541,21 @@ export const decisionLifecycleScenario: TestScenario = {
       },
     },
     {
+      id: "result-summary", label: "Ergebniszahlen in Meldung und Digest", kind: "workflow",
+      run: async (ctx) => {
+        const { data, error } = await supabase.rpc("decision_result_summary_selftest", { p_tenant: ctx.tenantId });
+        if (error) return { ok: false, message: describeError(error) };
+        const report = data as { ok?: boolean; message?: string; skipped?: string; checks?: Record<string, unknown> } | null;
+        return {
+          ok: report?.ok === true,
+          message: report?.ok === true
+            ? "Ergebnis-Meldung und Digest zeigen die aggregierten Antwortzahlen mit den konfigurierten Beschriftungen."
+            : (report?.skipped ?? report?.message ?? "Ergebniszahlen-Selbsttest fehlgeschlagen."),
+          details: report?.checks,
+        };
+      },
+    },
+    {
       id: "quiet-push-catchup", label: "Ruhezeit-Pushes nach Ende der Ruhezeit einmalig nachholen", kind: "workflow",
       run: async (ctx) => {
         const { data, error } = await supabase.rpc("decision_quiet_push_catchup_selftest", { p_tenant: ctx.tenantId });
