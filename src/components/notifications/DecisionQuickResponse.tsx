@@ -6,7 +6,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { getDefaultOptions, type ResponseOption } from '@/lib/decisionTemplates';
 import { notify } from '@/lib/notify';
 
-const QUICK_TYPES = new Set(['task_decision_request', 'task_decision_digest']);
+const QUICK_TYPES = new Set([
+  'task_decision_request',
+  'task_decision_digest',
+  'task_decision_deadline_reminder',
+]);
 
 interface QuickResponseNotification {
   data?: unknown;

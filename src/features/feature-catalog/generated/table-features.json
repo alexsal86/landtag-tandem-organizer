@@ -1047,6 +1047,13 @@
       "area": "entscheidungen"
     }
   ],
+  "decision_deadline_reminders": [
+    {
+      "id": "decisions.deadline-reminders",
+      "name": "Frist-Erinnerungen vor Ablauf",
+      "area": "entscheidungen"
+    }
+  ],
   "decision_email_templates": [
     {
       "id": "decisions.email",
@@ -2862,6 +2869,11 @@
       "area": "entscheidungen"
     },
     {
+      "id": "decisions.deadline-reminders",
+      "name": "Frist-Erinnerungen vor Ablauf",
+      "area": "entscheidungen"
+    },
+    {
       "id": "decisions.delivery-preferences",
       "name": "Persönliche Zustellfrequenz und Ruhezeiten",
       "area": "entscheidungen"
@@ -3594,6 +3606,11 @@
       "area": "entscheidungen"
     },
     {
+      "id": "decisions.deadline-reminders",
+      "name": "Frist-Erinnerungen vor Ablauf",
+      "area": "entscheidungen"
+    },
+    {
       "id": "decisions.notification-metrics",
       "name": "Wirkung der Entscheidungs-Meldungen messen",
       "area": "entscheidungen"
@@ -3691,6 +3708,11 @@
     {
       "id": "decisions.create",
       "name": "Entscheidung anlegen",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.deadline-reminders",
+      "name": "Frist-Erinnerungen vor Ablauf",
       "area": "entscheidungen"
     },
     {

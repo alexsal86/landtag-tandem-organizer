@@ -5,12 +5,12 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 1004,
+    "migrationCount": 1006,
     "tsModules": [
       "src/components/letters/types.ts"
     ]
   },
-  "machineCount": 52,
+  "machineCount": 53,
   "anomalies": [],
   "machines": [
     {
@@ -1475,6 +1475,43 @@
             "in_klaerung"
           ],
           "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
+        }
+      ]
+    },
+    {
+      "id": "decision_deadline_reminders.stage",
+      "table": "decision_deadline_reminders",
+      "column": "stage",
+      "enumType": null,
+      "states": [
+        {
+          "value": "24h",
+          "sources": [
+            "check:supabase/migrations/20261128235000_decision_deadline_reminders.sql"
+          ]
+        },
+        {
+          "value": "2h",
+          "sources": [
+            "check:supabase/migrations/20261128235000_decision_deadline_reminders.sql"
+          ]
+        }
+      ],
+      "initialStates": [],
+      "transitions": [],
+      "guards": [],
+      "reconciliation": null,
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Keine belegten Statusübergänge im Migrationsbestand.",
+        "Kein Startzustand belegt; der Eintritt in die Maschine ist nicht nachweisbar."
+      ],
+      "findings": [
+        {
+          "kind": "kein-startzustand",
+          "severity": "warn",
+          "states": [],
+          "message": "Kein Spalten-Default und kein literaler INSERT belegt einen Startzustand."
         }
       ]
     },

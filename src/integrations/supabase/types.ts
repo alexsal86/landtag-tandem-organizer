@@ -3757,6 +3757,45 @@ export type Database = {
           },
         ]
       }
+      decision_deadline_reminders: {
+        Row: {
+          decision_id: string
+          sent_at: string
+          stage: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          decision_id: string
+          sent_at?: string
+          stage: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          decision_id?: string
+          sent_at?: string
+          stage?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_deadline_reminders_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "task_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decision_deadline_reminders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decision_email_templates: {
         Row: {
           closing: string
@@ -19354,6 +19393,12 @@ export type Database = {
       decision_invitation_dispatch_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_delivery_preference_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_digest_items_selftest: { Args: { p_tenant: string }; Returns: Json }
+      decision_deadline_reminder_selftest: { Args: { p_tenant: string }; Returns: Json }
+      decision_quiet_hours_active: {
+        Args: { _user_id: string; _tenant_id: string; _type_name: string; _at?: string }
+        Returns: boolean
+      }
+      dispatch_decision_deadline_reminders: { Args: { _at?: string }; Returns: number }
       decision_mention_notification_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_notification_metrics_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_comment_mentions: {

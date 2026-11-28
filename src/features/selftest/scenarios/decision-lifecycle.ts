@@ -496,6 +496,21 @@ export const decisionLifecycleScenario: TestScenario = {
       },
     },
     {
+      id: "deadline-reminders", label: "Frist-Erinnerungen 24 h/2 h einmalig und mit Ruhezeiten", kind: "workflow",
+      run: async (ctx) => {
+        const { data, error } = await supabase.rpc("decision_deadline_reminder_selftest", { p_tenant: ctx.tenantId });
+        if (error) return { ok: false, message: describeError(error) };
+        const report = data as { ok?: boolean; message?: string; skipped?: string; checks?: Record<string, unknown> } | null;
+        return {
+          ok: report?.ok === true,
+          message: report?.ok === true
+            ? "24-h- und 2-h-Erinnerung kommen je einmal, Ruhezeiten verschieben den Versand und verhindern keine Erinnerung dauerhaft."
+            : (report?.skipped ?? report?.message ?? "Frist-Erinnerungs-Selbsttest fehlgeschlagen."),
+          details: report?.checks,
+        };
+      },
+    },
+    {
       id: "notification-metrics", label: "Zustellungen, Abschaltquote, Antwortzeit, Anstupser und Trigger-Fehler messen", kind: "workflow",
       run: async (ctx) => {
         const { data, error } = await supabase.rpc("decision_notification_metrics_selftest", { p_tenant: ctx.tenantId });

@@ -312,6 +312,48 @@
       ]
     },
     {
+      "id": "decisions.deadline-reminders",
+      "subarea": "Meldungen",
+      "name": "Frist-Erinnerungen vor Ablauf",
+      "description": "Erinnert offene Teilnehmende ohne Antwort 24 Stunden und 2 Stunden vor der Frist, höchstens einmal je Stufe. Ruhezeiten verschieben den Versand; die Erinnerung wird nicht gebündelt und bietet Schnellantworten.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/migrations/20261128235000_decision_deadline_reminders.sql",
+        "supabase/migrations/20261128236000_decision_deadline_reminders_selftest.sql",
+        "src/features/selftest/scenarios/decision-lifecycle.ts"
+      ],
+      "rpcs": [
+        "dispatch_decision_deadline_reminders",
+        "decision_quiet_hours_active",
+        "decision_deadline_reminder_selftest"
+      ],
+      "tables": [
+        "decision_deadline_reminders",
+        "task_decisions",
+        "task_decision_participants",
+        "notifications"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "dependsOn": ["decisions.notification-digest"],
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "docs": [
+        "docs/decision-deadline-reminders.md"
+      ],
+      "limitations": [
+        "Nicht geprüft: echter Cron-Lauf, Push-Versand, Browserdarstellung und die Wirkung auf die Antwortquote. Eine während der Ruhezeit bereits abgelaufene Stufe wird nicht nachgeholt."
+      ]
+    },
+    {
       "id": "decisions.digest-items",
       "subarea": "Meldungen",
       "name": "Aufklappbarer Digest mit Einzelmeldungen",

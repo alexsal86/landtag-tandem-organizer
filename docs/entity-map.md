@@ -2,13 +2,13 @@
 
 _Auto-generiert mit `npm run update:feature-catalog` aus den Fremdschlüsseln in `src/integrations/supabase/types.ts`. Nicht von Hand bearbeiten._
 
-367 Tabellen, 509 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
+368 Tabellen, 511 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
 
 ## Zentrale Tabellen
 
 Tabellen mit mindestens drei eingehenden Verweisen.
 
-### `tenants` — 149 eingehende Verweise
+### `tenants` — 150 eingehende Verweise
 
 | Von | Spalte |
 |---|---|
@@ -48,6 +48,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `dashboard_decision_nudges` | `tenant_id` |
 | `day_slips` | `tenant_id` |
 | `decision_archive_settings` | `tenant_id` |
+| `decision_deadline_reminders` | `tenant_id` |
 | `decision_invitation_dispatches` | `tenant_id` |
 | `decision_notification_preferences` | `tenant_id` |
 | `decision_notification_trigger_errors` | `tenant_id` |
@@ -254,11 +255,12 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `task_topics` | `task_id` |
 | `tasks` | `parent_task_id` |
 
-### `task_decisions` — 13 eingehende Verweise
+### `task_decisions` — 14 eingehende Verweise
 
 | Von | Spalte |
 |---|---|
 | `dashboard_decision_nudges` | `decision_id` |
+| `decision_deadline_reminders` | `decision_id` |
 | `decision_invitation_dispatches` | `decision_id` |
 | `decision_matrix_messages` | `decision_id` |
 | `decision_notification_trigger_errors` | `decision_id` |
@@ -742,6 +744,8 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `dashboard_decision_nudges` | `tenant_id` | `tenants` |
 | `day_slips` | `tenant_id` | `tenants` |
 | `decision_archive_settings` | `tenant_id` | `tenants` |
+| `decision_deadline_reminders` | `decision_id` | `task_decisions` |
+| `decision_deadline_reminders` | `tenant_id` | `tenants` |
 | `decision_invitation_dispatches` | `participant_id` | `task_decision_participants` |
 | `decision_invitation_dispatches` | `decision_id` | `task_decisions` |
 | `decision_invitation_dispatches` | `tenant_id` | `tenants` |

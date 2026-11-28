@@ -97,6 +97,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `delivery-preferences` | Persönliche Zustellfrequenz und Ruhezeiten respektieren | workflow | — |
 | `decision-lifecycle` | `digest-items` | Digest zeigt Einzelmeldungen mit Person und Sprungziel | workflow | — |
 | `decision-lifecycle` | `comment-mentions` | Direkte Erwähnungen sofort und außerhalb des Digests zustellen | workflow | — |
+| `decision-lifecycle` | `deadline-reminders` | Frist-Erinnerungen 24 h/2 h einmalig und mit Ruhezeiten | workflow | — |
 | `decision-lifecycle` | `notification-metrics` | Zustellungen, Abschaltquote, Antwortzeit, Anstupser und Trigger-Fehler messen | workflow | — |
 | `decision-lifecycle` | `notification-actions` | Aus der Meldung abstimmen und Antwort aktualisieren | workflow | — |
 | `decision-lifecycle` | `digest` | Meldungen werden gebündelt und nur der Digest wird gepusht | workflow | — |
