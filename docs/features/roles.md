@@ -763,8 +763,9 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.review` — Wissensantwort prüfen und freigeben
 - `knowledge.management` — Wissensverwaltung
 
-### `superadmin` — 29 Funktionen
+### `superadmin` — 30 Funktionen
 
+- `decisions.notification-metrics` — Wirkung der Entscheidungs-Meldungen messen
 - `appointments.debrief` — Nachbereitung und Büro-Feedback
 - `admin.workspace` — Administrationsbereich und Zugriff
 - `admin.roles` — Benutzerrollen verwalten
@@ -961,7 +962,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `decisions.notification-actions` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `decisions.notification-digest` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `decisions.notification-email` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
-| `decisions.notification-metrics` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
+| `decisions.notification-metrics` | `abgeordneter`, `bueroleitung`, `mitarbeiter`, `superadmin` |
 | `decisions.participants` | `oeffentlich`, `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `decisions.remind` | `abgeordneter`, `bueroleitung` |
 | `decisions.result-summary` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |

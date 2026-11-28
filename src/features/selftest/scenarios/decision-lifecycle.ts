@@ -1,4 +1,12 @@
 import { canNudgeDecision, DECISION_NUDGE_WINDOW_MS, decisionNudgePriority, decisionNudgeSecondsRemaining, decisionNudgeSummary } from "@/features/decisions/dashboardNudges";
+import {
+  buildNotificationEffectInsights,
+  formatMetricsMinutes,
+  formatMetricsPercent,
+  metricsShare,
+  rankOptOutTypes,
+  type NotificationMetrics,
+} from "@/features/notification-metrics/decisionNotificationEffect";
 import { needsOwnDecision } from "@/components/my-work/decisions/types";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
@@ -40,6 +48,7 @@ export const decisionLifecycleScenario: TestScenario = {
     "Der Ersteller erhält vor Ablauf und einmalig bei Überfälligkeit eine Warnung mit der Zahl fehlender Antworten und offener Rückfragen samt Alter der ältesten",
     "Eine verlängerte Frist setzt die gespeicherten Erinnerungsstufen zurück, sodass Teilnehmende und Ersteller erneut erinnert werden; beim Vorziehen entstehen keine Doppelungen",
     "Der E-Mail-Schalter für Entscheidungs-Meldungen stellt eine Outbox-Zeile ein; Frequenz, Ruhezeiten und Verbuchung werden auf demselben Weg geprüft",
+    "Die Wirkungsansicht sortiert Abschaltungen nach Quote, erkennt Push-Lücken und stellt Trigger-Alarme nach oben",
     "Der Tagesüberblick nennt offene Rückfragen einer eigenen Entscheidung samt Alter der ältesten",
     "Teilnehmer-Insert stellt genau eine Einladungs-Versandzeile ein, die der Worker übernimmt und verbucht",
   ],
@@ -529,6 +538,52 @@ export const decisionLifecycleScenario: TestScenario = {
             : (report?.skipped ?? report?.message ?? "Fristverlängerungs-Selbsttest fehlgeschlagen."),
           details: report?.checks,
         };
+      },
+    },
+    {
+      id: "notification-effect-insights", label: "Wirkungsansicht priorisiert Abschaltungen, Push-Lücken und Trigger-Fehler", kind: "logic",
+      run: async () => {
+        const metrics = (overrides: Partial<NotificationMetrics> = {}): NotificationMetrics => ({
+          tenant_id: "t",
+          days: 30,
+          since: "2026-11-01T00:00:00.000Z",
+          deliveries: { in_app: 100, push: 90, email_sent: 1, email_failed: 0, email_notifications_sent: 3, email_notifications_failed: 0 },
+          opt_out_by_type: [
+            { name: "request", label: "Anfrage", disabled: 6, members: 10, rate: 0.6 },
+            { name: "comment", label: "Kommentar", disabled: 2, members: 10, rate: 0.2 },
+            { name: "small", label: "Kleines Büro", disabled: 1, members: 2, rate: 0.5 },
+          ],
+          first_response: { decisions: 4, avg_minutes: 120, median_minutes: 90 },
+          nudges: { total: 5, answered_within_24h: 3, rate: 0.6 },
+          trigger_errors: { total: 0, last_24h: 0, rate: 0, alarm: false },
+          ...overrides,
+        });
+        const ranked = rankOptOutTypes(metrics().opt_out_by_type);
+        const alarm = buildNotificationEffectInsights(metrics({ trigger_errors: { total: 3, last_24h: 2, rate: 0.02, alarm: true } }))[0];
+        const quiet = buildNotificationEffectInsights(metrics());
+        const healthy = metrics({
+          deliveries: { in_app: 50, push: 45, email_sent: 1, email_failed: 0, email_notifications_sent: 2, email_notifications_failed: 0 },
+          opt_out_by_type: [{ name: "request", label: "Anfrage", disabled: 1, members: 10, rate: 0.1 }],
+        });
+        const pending = buildNotificationEffectInsights(metrics({
+          first_response: { decisions: 0, avg_minutes: null, median_minutes: null },
+          nudges: { total: 0, answered_within_24h: 0, rate: 0 },
+        }));
+        const checks = [
+          ranked.length === 2 && ranked[0].name === "request" && ranked[1].name === "comment",
+          alarm.id === "trigger-errors" && alarm.tone === "alert",
+          quiet[0].tone === "alert" && quiet.some((insight) => insight.id === "opt-out" && insight.tone === "alert"),
+          buildNotificationEffectInsights(metrics({ deliveries: { in_app: 100, push: 10, email_sent: 0, email_failed: 0 } }))
+            .some((insight) => insight.id === "push-reach" && insight.tone === "warn"),
+          buildNotificationEffectInsights(metrics({ first_response: { decisions: 4, avg_minutes: 4000, median_minutes: 3000 } }))
+            .some((insight) => insight.id === "first-response" && insight.tone === "warn"),
+          pending.filter((insight) => insight.tone === "neutral").length === 2,
+          buildNotificationEffectInsights(healthy).every((insight) => insight.tone === "ok"),
+          formatMetricsPercent(0.004) === "<1 %" && formatMetricsPercent(0.12) === "12 %" && formatMetricsPercent(null) === "—",
+          formatMetricsMinutes(45) === "45 Min." && formatMetricsMinutes(90) === "1,5 Std." && formatMetricsMinutes(2880) === "2,0 Tage",
+          metricsShare(0, 0) === null && metricsShare(1, 4) === 0.25,
+        ];
+        return { ok: checks.every(Boolean), message: `${checks.filter(Boolean).length}/${checks.length} Wirkungsregeln bestanden.` };
       },
     },
     {

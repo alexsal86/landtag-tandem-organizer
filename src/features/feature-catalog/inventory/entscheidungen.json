@@ -738,7 +738,7 @@
       "id": "decisions.notification-metrics",
       "subarea": "Meldungen",
       "name": "Wirkung der Entscheidungs-Meldungen messen",
-      "description": "Liefert je Mandant Kanalzustellungen (In-App, Push, E-Mail), Abschaltquoten je Entscheidungstyp, Zeit bis zur ersten Antwort, Anstupser-Wirkung innerhalb von 24 Stunden sowie Trigger-Fehlerquote und Alarm bei Ausnahmen der letzten 24 Stunden.",
+      "description": "Liefert je Mandant Kanalzustellungen (In-App, Push, E-Mail), Abschaltquoten je Entscheidungstyp, Zeit bis zur ersten Antwort, Anstupser-Wirkung innerhalb von 24 Stunden sowie Trigger-Fehlerquote und Alarm bei Ausnahmen der letzten 24 Stunden. Die Super-Admin-Ansicht \"Wirkung der Meldungen\" zeigt die Zahlen, sortiert Abschaltungen nach Quote und leitet aus Push-Lücken, Antwortzeit, Anstupsern und Trigger-Alarmen Handlungsbedarf ab.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
@@ -747,7 +747,16 @@
       "evidence": [
         "supabase/migrations/20261128223000_decision_notification_metrics.sql",
         "supabase/migrations/20261128224000_decision_notification_metrics_selftest.sql",
+        "supabase/migrations/20261128256000_decision_notification_metrics_email.sql",
+        "src/features/notification-metrics/DecisionNotificationMetricsPanel.tsx",
+        "src/features/notification-metrics/decisionNotificationEffect.ts",
+        "src/pages/Administration.tsx",
+        "src/components/administration/AdminSidebar.tsx",
         "src/features/selftest/scenarios/decision-lifecycle.ts"
+      ],
+      "components": [
+        "src/features/notification-metrics/DecisionNotificationMetricsPanel.tsx",
+        "src/features/notification-metrics/decisionNotificationEffect.ts"
       ],
       "rpcs": [
         "notification_metrics",
@@ -757,16 +766,22 @@
         "notifications",
         "notification_types",
         "user_notification_settings",
+        "task_decisions",
         "task_decision_participants",
         "task_decision_responses",
         "dashboard_decision_nudges",
         "decision_invitation_dispatches",
+        "decision_notification_email_dispatches",
         "decision_notification_trigger_errors"
       ],
       "roles": [
         "abgeordneter",
         "bueroleitung",
-        "mitarbeiter"
+        "mitarbeiter",
+        "superadmin"
+      ],
+      "dependsOn": [
+        "decisions.notification-digest"
       ],
       "scenarios": [
         "decision-lifecycle"
@@ -775,7 +790,7 @@
         "docs/decision-notification-metrics.md"
       ],
       "limitations": [
-        "Es gibt noch keine Kennzahlenansicht in der Oberfläche; die Werte sind über die RPC abrufbar. Echte Push-/E-Mail-Zustellung und Cron-Läufe sind nicht ausgeführt."
+        "Die Abschaltquote zeigt den aktuellen Stand der Einstellungen, nicht nur Abschaltungen im Zeitraum. Die RPC verlangt eine Mitgliedschaft im gewählten Arbeitsbereich; ist sie nicht vorhanden, zeigt das Panel einen Hinweis statt Zahlen. Echte Push-/E-Mail-Zustellung, Cron-Läufe und die Browserdarstellung sind nicht ausgeführt."
       ]
     },
     {

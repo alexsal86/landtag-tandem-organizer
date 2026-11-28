@@ -1318,6 +1318,7 @@
             "Der Ersteller erhält vor Ablauf und einmalig bei Überfälligkeit eine Warnung mit der Zahl fehlender Antworten und offener Rückfragen samt Alter der ältesten",
             "Eine verlängerte Frist setzt die gespeicherten Erinnerungsstufen zurück, sodass Teilnehmende und Ersteller erneut erinnert werden; beim Vorziehen entstehen keine Doppelungen",
             "Der E-Mail-Schalter für Entscheidungs-Meldungen stellt eine Outbox-Zeile ein; Frequenz, Ruhezeiten und Verbuchung werden auf demselben Weg geprüft",
+            "Die Wirkungsansicht sortiert Abschaltungen nach Quote, erkennt Push-Lücken und stellt Trigger-Alarme nach oben",
             "Der Tagesüberblick nennt offene Rückfragen einer eigenen Entscheidung samt Alter der ältesten",
             "Teilnehmer-Insert stellt genau eine Einladungs-Versandzeile ein, die der Worker übernimmt und verbucht"
           ],
@@ -1332,7 +1333,9 @@
             "task_decision_comments",
             "task_decision_comment_reactions",
             "dashboard_decision_nudges",
-            "notifications"
+            "notifications",
+            "decision_invitation_dispatches",
+            "decision_notification_email_dispatches"
           ],
           "features": [
             "decisions.attachments",
@@ -1430,6 +1433,10 @@
             {
               "id": "deadline-rearm",
               "label": "Verlängerte Frist erinnert Teilnehmende und Ersteller erneut"
+            },
+            {
+              "id": "notification-effect-insights",
+              "label": "Wirkungsansicht priorisiert Abschaltungen, Push-Lücken und Trigger-Fehler"
             },
             {
               "id": "notification-email",

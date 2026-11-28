@@ -527,7 +527,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `decisions.notification-metrics`
 
-- Es gibt noch keine Kennzahlenansicht in der Oberfläche; die Werte sind über die RPC abrufbar. Echte Push-/E-Mail-Zustellung und Cron-Läufe sind nicht ausgeführt.
+- Die Abschaltquote zeigt den aktuellen Stand der Einstellungen, nicht nur Abschaltungen im Zeitraum. Die RPC verlangt eine Mitgliedschaft im gewählten Arbeitsbereich; ist sie nicht vorhanden, zeigt das Panel einen Hinweis statt Zahlen. Echte Push-/E-Mail-Zustellung, Cron-Läufe und die Browserdarstellung sind nicht ausgeführt.
 
 ### `decisions.notification-actions`
 

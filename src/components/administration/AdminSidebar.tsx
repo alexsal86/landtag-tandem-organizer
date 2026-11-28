@@ -48,6 +48,7 @@ import {
   ClipboardCheck,
   Globe2,
   Sparkles,
+  BarChart3,
   ShieldCheck,
 } from "lucide-react";
 
@@ -173,6 +174,7 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "ministry-history", label: "Ministerien-Historie", icon: Landmark },
       { id: "tenants", label: "Tenants", icon: Building2 },
       { id: "feature-catalog", label: "Funktionskatalog", icon: BookOpen },
+      { id: "notification-effect", label: "Wirkung der Meldungen", icon: BarChart3 },
       { id: "push-tests", label: "Push-System Tests", icon: Bell },
       { id: "roles", label: "Rechte & Rollen", icon: UserCheck },
       { id: "associations", label: "Kreisverbände", icon: Landmark },

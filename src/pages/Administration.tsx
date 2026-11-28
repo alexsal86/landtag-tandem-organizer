@@ -53,6 +53,7 @@ const LetterOccasionManager = lazy(() => import("@/components/administration/Let
 const PressTemplateManager = lazy(() => import("@/components/administration/PressTemplateManager").then(module => ({ default: module.PressTemplateManager })));
 const PressOccasionManager = lazy(() => import("@/components/administration/PressOccasionManager").then(module => ({ default: module.PressOccasionManager })));
 const SuperadminTenantManagement = lazy(() => import("@/components/administration/SuperadminTenantManagement").then(module => ({ default: module.SuperadminTenantManagement })));
+const DecisionNotificationMetricsPanel = lazy(() => import("@/features/notification-metrics/DecisionNotificationMetricsPanel").then(module => ({ default: module.DecisionNotificationMetricsPanel })));
 const GeoDataImport = lazy(() => import("@/components/administration/GeoDataImport").then(module => ({ default: module.GeoDataImport })));
 const MapLayerAdmin = lazy(() => import("@/components/administration/MapLayerAdmin").then(module => ({ default: module.MapLayerAdmin })));
 const OnboardingSlidesManager = lazy(() => import("@/components/administration/OnboardingSlidesManager").then(module => ({ default: module.OnboardingSlidesManager })));
@@ -420,6 +421,7 @@ export default function Administration(): React.JSX.Element | null {
           );
         case "election-history": return <ElectionHistoryAdmin />;
         case "feature-catalog": return <FeatureCatalogView />;
+        case "notification-effect": return <DecisionNotificationMetricsPanel />;
         case "ministry-history": return <MinistryHistoryView />;
         case "push-tests":
           return (

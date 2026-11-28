@@ -1097,6 +1097,11 @@
       "id": "decisions.notification-email",
       "name": "Entscheidungs-Meldungen per E-Mail",
       "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.notification-metrics",
+      "name": "Wirkung der Entscheidungs-Meldungen messen",
+      "area": "entscheidungen"
     }
   ],
   "decision_notification_preferences": [
@@ -3817,6 +3822,11 @@
     {
       "id": "decisions.inbox-hygiene",
       "name": "Inbox-Hygiene für Entscheidungs-Meldungen",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.notification-metrics",
+      "name": "Wirkung der Entscheidungs-Meldungen messen",
       "area": "entscheidungen"
     },
     {
