@@ -43,13 +43,13 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`dashboard_decision_nudges`, `decision_archive_settings`, `decision_email_templates`, `decision_matrix_messages`, `email_logs`, `task_decision_attachments`, `task_decision_comment_reactions`, `task_decision_comments`, `task_decision_participants`, `task_decision_response_history`, `task_decision_responses`, `task_decision_topics`, `task_decision_vote_effects`, `task_decisions`, `tasks`
+`dashboard_decision_nudges`, `decision_archive_settings`, `decision_email_templates`, `decision_invitation_dispatches`, `decision_matrix_messages`, `email_logs`, `task_decision_attachments`, `task_decision_comment_reactions`, `task_decision_comments`, `task_decision_participants`, `task_decision_response_history`, `task_decision_responses`, `task_decision_topics`, `task_decision_vote_effects`, `task_decisions`, `tasks`
 
 ## Selbsttest-Szenarien
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 11 | 8 | — |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 11 | 9 | — |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 8 | — |
 
 ## Selbsttest-Schritte
@@ -69,6 +69,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `decision-attachments` | Anhang-Metadaten an die Entscheidung hängen, lesen und entfernen | workflow | — |
 | `decision-lifecycle` | `comments-and-reactions` | Kommentar, Antwort und Emoji-Reaktion speichern und entfernen | workflow | — |
 | `decision-lifecycle` | `notifications` | Meldungen entstehen im Mandanten der Entscheidung | workflow | — |
+| `decision-lifecycle` | `invitation-dispatch` | Einladungsversand wird serverseitig eingestellt und übernommen | workflow | — |
 | `decision-lifecycle` | `set-open` | Status auf 'open' | db | — |
 | `decision-lifecycle` | `archive` | Archivieren | db | — |
 | `decision-lifecycle` | `verify` | Verifikation | db | — |
@@ -101,6 +102,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 6. Das Anmahnen speichert den Eintrag mit Absender und Notiz und weist die zweite Mahnung innerhalb von 24 Stunden ab
 7. Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen
 8. Anfrage-, Kommentar-, Reaktions-, Ersteller-Antwort- und Abschlussmeldung entstehen im Mandanten der Entscheidung
+9. Teilnehmer-Insert stellt genau eine Einladungs-Versandzeile ein, die der Worker übernimmt und verbucht
 
 ### `task-lifecycle`
 
@@ -116,7 +118,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 ## Funktionsdetails
 
 ### `decisions.create` — Entscheidung anlegen
-Erstellt eine Entscheidung mit Optionen, Frist, Teilnehmenden, Anhängen und Bezug zu Aufgabe, Vorgang oder Meeting. Die Anfrage an Teilnehmende entsteht per Trigger im Mandanten der Entscheidung.
+Erstellt eine Entscheidung mit Optionen, Frist, Teilnehmenden, Anhängen und Bezug zu Aufgabe, Vorgang oder Meeting. Die Anfrage an Teilnehmende entsteht per Trigger im Mandanten der Entscheidung. E-Mail-Einladungen laufen über eine serverseitige Outbox, die auch später hinzugefügte Teilnehmende erfasst.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -128,15 +130,15 @@ Erstellt eine Entscheidung mit Optionen, Frist, Teilnehmenden, Anhängen und Bez
 - **Frontend-Komponenten:** `src/pages/Decisions.tsx`, `src/components/task-decisions`
 - **Services:** —
 - **Hooks:** `src/hooks/useMyWorkDecisionsData.ts`, `src/hooks/useDefaultDecisionSettings.ts`
-- **Edge Functions:** —
-- **Datenbankfunktionen:** `create_work_decision`, `decision_notification_selftest`
-- **Tabellen:** `task_decisions`, `task_decision_participants`, `task_decision_topics`, `task_decision_attachments`
+- **Edge Functions:** `send-decision-email`, `dispatch-decision-invitations`
+- **Datenbankfunktionen:** `create_work_decision`, `decision_notification_selftest`, `decision_invitation_dispatch_selftest`, `enqueue_decision_invitation_dispatch`, `claim_decision_invitation_dispatches`, `finish_decision_invitation_dispatch`
+- **Tabellen:** `task_decisions`, `task_decision_participants`, `task_decision_topics`, `task_decision_attachments`, `decision_invitation_dispatches`
 - **Abhängigkeiten:** —
 - **Selbsttests:** `decision-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
-- **Dokumentation:** `docs/my-work-decisions-button-flowchart.md`, `docs/decision-notifications.md`
+- **Dokumentation:** `docs/my-work-decisions-button-flowchart.md`, `docs/decision-notifications.md`, `docs/decision-invitation-dispatch.md`
 
 **Nachweise im Quellcode**
 
@@ -144,6 +146,7 @@ Erstellt eine Entscheidung mit Optionen, Frist, Teilnehmenden, Anhängen und Bez
 - src/features/selftest/scenarios/decision-lifecycle.ts
 - supabase/migrations/20261128210000_decision_notification_tenant.sql
 - supabase/migrations/20261128213000_decision_notification_trigger_safety.sql
+- supabase/migrations/20261128215000_decision_invitation_dispatch.sql
 
 **Bekannte Einschränkungen**
 

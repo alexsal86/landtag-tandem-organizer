@@ -513,6 +513,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `create-daily-appointment-feedback` | termine |
 | `create-demo-users` | verwaltung |
 | `detect-appointment-district` | termine |
+| `dispatch-decision-invitations` | entscheidungen |
 | `dispatch-mobile-push` | schnittstellen |
 | `execute-annual-tasks` | automation |
 | `extract-photo-data` | wahl |

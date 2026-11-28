@@ -9,7 +9,7 @@
       "id": "decisions.create",
       "subarea": "Anlegen",
       "name": "Entscheidung anlegen",
-      "description": "Erstellt eine Entscheidung mit Optionen, Frist, Teilnehmenden, Anhängen und Bezug zu Aufgabe, Vorgang oder Meeting. Die Anfrage an Teilnehmende entsteht per Trigger im Mandanten der Entscheidung.",
+      "description": "Erstellt eine Entscheidung mit Optionen, Frist, Teilnehmenden, Anhängen und Bezug zu Aufgabe, Vorgang oder Meeting. Die Anfrage an Teilnehmende entsteht per Trigger im Mandanten der Entscheidung. E-Mail-Einladungen laufen über eine serverseitige Outbox, die auch später hinzugefügte Teilnehmende erfasst.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
@@ -19,7 +19,8 @@
         "src/pages/Decisions.tsx",
         "src/features/selftest/scenarios/decision-lifecycle.ts",
         "supabase/migrations/20261128210000_decision_notification_tenant.sql",
-        "supabase/migrations/20261128213000_decision_notification_trigger_safety.sql"
+        "supabase/migrations/20261128213000_decision_notification_trigger_safety.sql",
+        "supabase/migrations/20261128215000_decision_invitation_dispatch.sql"
       ],
       "routes": [
         "/decisions"
@@ -34,13 +35,22 @@
       ],
       "rpcs": [
         "create_work_decision",
-        "decision_notification_selftest"
+        "decision_notification_selftest",
+        "decision_invitation_dispatch_selftest",
+        "enqueue_decision_invitation_dispatch",
+        "claim_decision_invitation_dispatches",
+        "finish_decision_invitation_dispatch"
+      ],
+      "edgeFunctions": [
+        "send-decision-email",
+        "dispatch-decision-invitations"
       ],
       "tables": [
         "task_decisions",
         "task_decision_participants",
         "task_decision_topics",
-        "task_decision_attachments"
+        "task_decision_attachments",
+        "decision_invitation_dispatches"
       ],
       "roles": [
         "abgeordneter",
@@ -52,7 +62,8 @@
       ],
       "docs": [
         "docs/my-work-decisions-button-flowchart.md",
-        "docs/decision-notifications.md"
+        "docs/decision-notifications.md",
+        "docs/decision-invitation-dispatch.md"
       ]
     },
     {

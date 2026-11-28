@@ -283,33 +283,16 @@ export function NoteDecisionCreator({
         }
       }
 
-      // Send notifications
-      if (sendByEmail || sendViaMatrix) {
-        for (const userId of selectedUsers) {
-          // Die In-App-Anfrage meldet der Trigger auf task_decision_participants.
-
-          // Get participant token for email
-          if (sendByEmail) {
-            const { data: participant } = await supabase
-              .from("task_decision_participants")
-              .select("id")
-              .eq("decision_id", decision.id)
-              .eq("user_id", userId)
-              .single();
-
-            if (participant) {
-              try {
-                await supabase.functions.invoke("send-decision-email", {
-                  body: {
-                    participantId: participant.id,
-                    decisionId: decision.id
-                  }
-                });
-              } catch (emailError) {
-                debugConsole.warn('Email sending failed:', emailError);
-              }
-            }
-          }
+      // Die In-App-Anfrage meldet der Trigger auf task_decision_participants. Der
+      // E-Mail-Versand hängt an derselben Outbox: Hier wird nur die Absicht des
+      // Erstellers festgehalten, zugestellt wird serverseitig.
+      if (sendByEmail) {
+        const { error: inviteError } = await supabase
+          .from("task_decisions")
+          .update({ invite_via_email: true })
+          .eq("id", decision.id);
+        if (inviteError) {
+          debugConsole.warn("Einladungsversand konnte nicht freigegeben werden:", inviteError);
         }
       }
 

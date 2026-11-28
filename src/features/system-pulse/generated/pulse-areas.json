@@ -1314,7 +1314,8 @@
             "Kommentar und Antwort werden gespeichert; Emoji-Reaktionen folgen der Allowlist, sind je Person eindeutig und wieder entfernbar",
             "Das Anmahnen speichert den Eintrag mit Absender und Notiz und weist die zweite Mahnung innerhalb von 24 Stunden ab",
             "Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen",
-            "Anfrage-, Kommentar-, Reaktions-, Ersteller-Antwort- und Abschlussmeldung entstehen im Mandanten der Entscheidung"
+            "Anfrage-, Kommentar-, Reaktions-, Ersteller-Antwort- und Abschlussmeldung entstehen im Mandanten der Entscheidung",
+            "Teilnehmer-Insert stellt genau eine Einladungs-Versandzeile ein, die der Worker übernimmt und verbucht"
           ],
           "tables": [
             "task_decisions",
@@ -1385,6 +1386,10 @@
             {
               "id": "notifications",
               "label": "Meldungen entstehen im Mandanten der Entscheidung"
+            },
+            {
+              "id": "invitation-dispatch",
+              "label": "Einladungsversand wird serverseitig eingestellt und übernommen"
             },
             {
               "id": "set-open",

@@ -1034,6 +1034,13 @@
       "area": "entscheidungen"
     }
   ],
+  "decision_invitation_dispatches": [
+    {
+      "id": "decisions.create",
+      "name": "Entscheidung anlegen",
+      "area": "entscheidungen"
+    }
+  ],
   "decision_matrix_messages": [
     {
       "id": "decisions.matrix",

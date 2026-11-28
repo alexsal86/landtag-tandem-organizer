@@ -23,14 +23,6 @@ interface MatrixInvokeResult {
   total_participants: number;
 }
 
-interface EmailResultItem {
-  success: boolean;
-}
-
-interface EmailInvokeResult {
-  results: EmailResultItem[];
-}
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
@@ -39,12 +31,6 @@ const isMatrixInvokeResult = (value: unknown): value is MatrixInvokeResult => {
   const sent = value.sent;
   const totalParticipants = value.total_participants;
   return typeof sent === "number" && typeof totalParticipants === "number";
-};
-
-const isEmailInvokeResult = (value: unknown): value is EmailInvokeResult => {
-  if (!isRecord(value)) return false;
-  if (!Array.isArray(value.results)) return false;
-  return value.results.every((result) => isRecord(result) && typeof result.success === "boolean");
 };
 
 const getErrorMessage = (error: unknown): string => {
@@ -385,51 +371,30 @@ export const useDecisionCreator = ({
         }
       }
 
+      // Der E-Mail-Versand läuft serverseitig über die Outbox; hier wird nur die
+      // Absicht festgehalten, damit auch später hinzugefügte Teilnehmende erfasst sind.
       if (sendByEmail) {
         try {
-          notify.success("E-Mails werden versendet...", {
-            description: "Die E-Mail-Einladungen werden an die ausgewählten Teilnehmer gesendet."
-});
+          const { error: inviteError } = await supabase
+            .from("task_decisions")
+            .update({ invite_via_email: true })
+            .eq("id", decision.id);
 
-          const { data: emailResult, error: emailError } = await supabase.functions.invoke("send-decision-email", {
-            body: {
-              decisionId: decision.id,
-              taskId: taskId ?? null,
-              participantIds: validSelectedUsers,
-              decisionTitle: title.trim(),
-              decisionDescription: description.trim() || null,
-              tenantId: tenantData.id,
-            },
-          });
-
-          if (emailError) {
-            debugConsole.error("Error sending decision emails:", emailError);
+          if (inviteError) {
+            debugConsole.error("Einladungsversand konnte nicht freigegeben werden:", inviteError);
             notify.error("E-Mail-Fehler", {
-              description: `E-Mails konnten nicht versendet werden: ${emailError.message}`
-});
-          } else if (isEmailInvokeResult(emailResult)) {
-            const successCount = emailResult.results.filter((result) => result.success).length;
-            const totalCount = emailResult.results.length || validSelectedUsers.length;
-
-            if (successCount > 0) {
-              notify.success("E-Mails versendet", {
-                description: `${successCount}/${totalCount} E-Mail-Einladungen erfolgreich versendet.`
-});
-            } else {
-              notify.error("E-Mail-Warnung", {
-                description: "Keine E-Mails konnten versendet werden. Überprüfen Sie die E-Mail-Konfiguration."
-});
-            }
+              description: `Einladungen konnten nicht vorbereitet werden: ${inviteError.message}`
+            });
           } else {
-            notify.error("E-Mail-Warnung", {
-              description: "E-Mail-Rückgabe hatte ein unerwartetes Format."
-});
+            notify.success("Einladungen werden vorbereitet", {
+              description: "Der E-Mail-Versand läuft im Hintergrund und an alle Teilnehmenden."
+            });
           }
         } catch (emailError: unknown) {
-          debugConsole.error("Error sending decision emails:", emailError);
+          debugConsole.error("Einladungsversand konnte nicht vorbereitet werden:", emailError);
           notify.error("E-Mail-Fehler", {
-            description: `Unerwarteter Fehler beim E-Mail-Versand: ${getErrorMessage(emailError)}`
-});
+            description: `Unerwarteter Fehler: ${getErrorMessage(emailError)}`
+          });
         }
       }
 

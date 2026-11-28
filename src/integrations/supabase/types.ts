@@ -3796,6 +3796,71 @@ export type Database = {
         }
         Relationships: []
       }
+      decision_invitation_dispatches: {
+        Row: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          decision_id: string
+          id: string
+          last_error: string | null
+          participant_id: string
+          processed_at: string | null
+          status: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          decision_id: string
+          id?: string
+          last_error?: string | null
+          participant_id: string
+          processed_at?: string | null
+          status?: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          decision_id?: string
+          id?: string
+          last_error?: string | null
+          participant_id?: string
+          processed_at?: string | null
+          status?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_invitation_dispatches_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "task_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decision_invitation_dispatches_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: true
+            referencedRelation: "task_decision_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decision_invitation_dispatches_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+
       decision_matrix_messages: {
         Row: {
           created_at: string | null
@@ -16011,6 +16076,7 @@ export type Database = {
           created_by: string
           description: string | null
           id: string
+          invite_via_email: boolean
           jour_fixe_reserved_meeting_id: string | null
           meeting_id: string | null
           meeting_result: string | null
@@ -16035,6 +16101,7 @@ export type Database = {
           created_by: string
           description?: string | null
           id?: string
+          invite_via_email?: boolean
           jour_fixe_reserved_meeting_id?: string | null
           meeting_id?: string | null
           meeting_result?: string | null
@@ -16059,6 +16126,7 @@ export type Database = {
           created_by?: string
           description?: string | null
           id?: string
+          invite_via_email?: boolean
           jour_fixe_reserved_meeting_id?: string | null
           meeting_id?: string | null
           meeting_result?: string | null
@@ -19176,6 +19244,7 @@ export type Database = {
         }
         Returns: Json
       }
+      decision_invitation_dispatch_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_notification_selftest: { Args: { p_tenant: string }; Returns: Json }
       decide_appointment_request: {
         Args: {

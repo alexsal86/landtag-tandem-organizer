@@ -70,6 +70,7 @@
   "day_slips",
   "decision_archive_settings",
   "decision_email_templates",
+  "decision_invitation_dispatches",
   "decision_matrix_messages",
   "default_appointment_guests",
   "distribution_list_members",

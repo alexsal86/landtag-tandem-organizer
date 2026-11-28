@@ -35,6 +35,7 @@ export const decisionLifecycleScenario: TestScenario = {
     "Das Anmahnen speichert den Eintrag mit Absender und Notiz und weist die zweite Mahnung innerhalb von 24 Stunden ab",
     "Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen",
     "Anfrage-, Kommentar-, Reaktions-, Ersteller-Antwort- und Abschlussmeldung entstehen im Mandanten der Entscheidung",
+    "Teilnehmer-Insert stellt genau eine Einladungs-Versandzeile ein, die der Worker übernimmt und verbucht",
   ],
   limitations: [
     "Der Erfolgspfad des Anmahmens läuft über decision_nudge_selftest und wird vollständig zurückgerollt. Er ist nur prüfbar, wenn das Büro ein zweites aktives Abgeordnetenkonto hat und das angemeldete Konto anmahnen darf; sonst belegt der Schritt ausdrücklich nur die Abweisung.",
@@ -413,6 +414,21 @@ export const decisionLifecycleScenario: TestScenario = {
           ok: true,
           message: result.skipped ?? `Anfrage, Kommentar, Reaktion, Ersteller-Antwort und Abschluss wurden im Mandanten der Entscheidung zugestellt (${JSON.stringify(result.delivered)}).`,
           details: result.delivered,
+        };
+      },
+    },
+    {
+      id: "invitation-dispatch", label: "Einladungsversand wird serverseitig eingestellt und übernommen", kind: "workflow",
+      run: async (ctx) => {
+        const { data, error } = await supabase.rpc("decision_invitation_dispatch_selftest", { p_tenant: ctx.tenantId });
+        if (error) return { ok: false, message: describeError(error) };
+        const report = data as { ok?: boolean; message?: string; checks?: Record<string, unknown> } | null;
+        return {
+          ok: report?.ok === true,
+          message: report?.ok === true
+            ? "Der Teilnehmer-Insert stellt eine Versandzeile ein, der Worker übernimmt sie und verbucht den Versand."
+            : (report?.message ?? "Einladungs-Selbsttest fehlgeschlagen."),
+          details: report?.checks,
         };
       },
     },

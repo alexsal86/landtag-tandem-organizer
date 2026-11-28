@@ -4,7 +4,7 @@ import { requireAppBaseUrl } from "../_shared/url.ts";
 import { createServiceRoleClient } from "../_shared/supabase.ts";
 import { requireTenantAccess } from "../_shared/tenant-access.ts";
 
-import { withSafeHandler } from "../_shared/security.ts";
+import { requireServiceRole, withSafeHandler } from "../_shared/security.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
@@ -31,17 +31,41 @@ const handler = async (req: Request): Promise<Response> => {
     const supabase = createServiceRoleClient();
 
     const requestBody = await req.json();
-    const tenantAccess = await requireTenantAccess({
-      req,
-      functionName: "send-decision-email",
-      requestedTenantId: requestBody.tenant_id,
-    });
 
-    if ("response" in tenantAccess) {
-      return tenantAccess.response;
+    // Zwei Wege: der Ersteller sendet direkt aus der Oberfläche (bisheriges
+    // Verhalten) oder der Cron-Worker dispatch-decision-invitations übernimmt eine
+    // Outbox-Zeile. Der interne Weg verlangt Service-Role UND ein gemeinsames
+    // Geheimnis; ohne gesetztes Geheimnis bleibt er abgeschaltet.
+    const internalSecret = (Deno.env.get("DECISION_DISPATCH_SECRET") ?? "").trim();
+    const isInternalDispatch = internalSecret.length > 0
+      && requireServiceRole(req)
+      && (req.headers.get("x-decision-dispatch-secret") ?? "") === internalSecret;
+
+    let effectiveTenantId: string;
+    let authorizedCreatorId: string | null = null;
+
+    if (isInternalDispatch) {
+      if (!requestBody.tenant_id) {
+        return new Response(
+          JSON.stringify({ error: 'tenant_id fehlt für den internen Versand' }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        );
+      }
+      effectiveTenantId = requestBody.tenant_id;
+    } else {
+      const tenantAccess = await requireTenantAccess({
+        req,
+        functionName: "send-decision-email",
+        requestedTenantId: requestBody.tenant_id,
+      });
+
+      if ("response" in tenantAccess) {
+        return tenantAccess.response;
+      }
+
+      effectiveTenantId = tenantAccess.tenantId;
+      authorizedCreatorId = tenantAccess.user.id;
     }
-
-    const effectiveTenantId = tenantAccess.tenantId;
 
     const {
       decisionId,
@@ -72,7 +96,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    if (decisionData.created_by !== tenantAccess.user.id) {
+    if (!isInternalDispatch && decisionData.created_by !== authorizedCreatorId) {
       return new Response(
         JSON.stringify({ error: 'Only the decision creator can send invitations' }),
         { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } },
