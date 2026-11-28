@@ -62,8 +62,8 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
 | `annual-task-stafette` | Jahresaufgabe → Büroaufgabe → Jahresabschluss | 3 | 5 | — |
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 9 | 7 | — |
-| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 7 | — |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 11 | 8 | — |
+| `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 8 | — |
 | `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | 5 | 8 | — |
 
 ## Selbsttest-Schritte
@@ -86,6 +86,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `create` | Entscheidung anlegen (active) | db | — |
 | `decision-lifecycle` | `add-participant` | Teilnehmer (sich selbst) hinzufügen | db | — |
 | `decision-lifecycle` | `withdraw-responses` | Ja, Nein und Rückfrage speichern und nachweisbar zurücknehmen | workflow | — |
+| `decision-lifecycle` | `withdraw-task-vote` | Rücknahme eines Votums an einer verknüpften Aufgabe | workflow | — |
 | `decision-lifecycle` | `check-options` | Default-Antwortoptionen prüfen | db | — |
 | `decision-lifecycle` | `change-vote-history` | Antwort ändern und den bisherigen Stand im Verlauf behalten | workflow | — |
 | `decision-lifecycle` | `decision-attachments` | Anhang-Metadaten an die Entscheidung hängen, lesen und entfernen | workflow | — |
@@ -108,6 +109,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `task-lifecycle` | `completion-stamp` | Abschluss stempelt completed_at, Wiederöffnen löscht den Stempel | db | — |
 | `task-lifecycle` | `recurrence-spawn` | Wiederholung legt beim Abschluss genau eine Folgeaufgabe an | workflow | — |
 | `task-lifecycle` | `decision-ball` | Votum holt den Ball zurück; Folgeaufgabe entsteht genau einmal | workflow | — |
+| `task-lifecycle` | `decision-ball-withdrawal` | Rücknahme des Votums stellt Ball und Schritt wieder her | workflow | — |
 | `task-lifecycle` | `tenant-boundary` | Aufgabe lässt sich keinem fremden Büro zuordnen | workflow | — |
 | `task-stafette-lifecycle` | `nudge` | Anstupsen: Empfänger sieht Aufgabe oben, 24h-Limit | logic | — |
 | `task-stafette-lifecycle` | `checklist-batch` | Checkpunkt im Verlauf, Frist +1 Woche | logic | — |
@@ -145,12 +147,13 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 ### `decision-lifecycle`
 
 1. Ja, Nein und Rückfrage werden gespeichert und nachweisbar zurückgenommen
-2. Eine geänderte Antwort schreibt den bisherigen und den neuen Stand in task_decision_response_history
-3. Anhang-Metadaten hängen an der Entscheidung, sind für Teilnehmende lesbar und wieder entfernbar (ohne Datei-Upload)
-4. Kommentar und Antwort werden gespeichert; Emoji-Reaktionen folgen der Allowlist, sind je Person eindeutig und wieder entfernbar
-5. Das Anmahnen speichert den Eintrag mit Absender und Notiz und weist die zweite Mahnung innerhalb von 24 Stunden ab
-6. Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen
-7. Anfrage-, Kommentar-, Reaktions-, Ersteller-Antwort- und Abschlussmeldung entstehen im Mandanten der Entscheidung
+2. Die Rücknahme eines Votums an einer verknüpften Aufgabe gibt Ball und nächsten Schritt zurück und entfernt den Votum-Eintrag
+3. Eine geänderte Antwort schreibt den bisherigen und den neuen Stand in task_decision_response_history
+4. Anhang-Metadaten hängen an der Entscheidung, sind für Teilnehmende lesbar und wieder entfernbar (ohne Datei-Upload)
+5. Kommentar und Antwort werden gespeichert; Emoji-Reaktionen folgen der Allowlist, sind je Person eindeutig und wieder entfernbar
+6. Das Anmahnen speichert den Eintrag mit Absender und Notiz und weist die zweite Mahnung innerhalb von 24 Stunden ab
+7. Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen
+8. Anfrage-, Kommentar-, Reaktions-, Ersteller-Antwort- und Abschlussmeldung entstehen im Mandanten der Entscheidung
 
 ### `task-lifecycle`
 
@@ -161,6 +164,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 5. Abschluss setzt completed_at, Wiederöffnen entfernt es
 6. Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an
 7. Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal
+8. Rücknahme des Votums gibt Ball, nächsten Schritt und Frist zurück und entfernt den Votum-Eintrag; eine weitergelaufene Aufgabe bleibt stehen und wird nur vermerkt
 
 ### `task-stafette-lifecycle`
 

@@ -27,6 +27,7 @@ export const taskLifecycleScenario: TestScenario = {
     "Abschluss setzt completed_at, Wiederöffnen entfernt es",
     "Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an",
     "Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal",
+    "Rücknahme des Votums gibt Ball, nächsten Schritt und Frist zurück und entfernt den Votum-Eintrag; eine weitergelaufene Aufgabe bleibt stehen und wird nur vermerkt",
   ],
   writes: [
     { table: "tasks", columns: ["title", "description", "status", "priority", "user_id", "tenant_id", "assigned_to", "due_date", "progress", "pending_for_jour_fixe", "completed_at", "recurrence_rule", "parent_task_id", "ball_owner", "ball_assignee_id", "next_action", "next_action_due", "timeline"] },
@@ -400,6 +401,87 @@ export const taskLifecycleScenario: TestScenario = {
             ? "Ball liegt wieder im Büro; die Folgeaufgabe entsteht nur einmal."
             : "Ball-Rückgabe oder Folgeaufgabe weicht ab.",
           details: { task: task.data, followUp: follow, repeated: repeated.data },
+        };
+      },
+    },
+    {
+      id: "decision-ball-withdrawal", label: "Rücknahme des Votums stellt Ball und Schritt wieder her", kind: "workflow",
+      run: async (ctx) => {
+        const taskId = ctx.data.taskId as string;
+        // Ausgangszustand bewusst beim Abgeordneten: nur so ist die Rückgabe prüfbar.
+        const prepared = await supabase.from("tasks").update({
+          ball_owner: "deputy", ball_assignee_id: ctx.userId, next_action: "Rückmeldung prüfen", next_action_due: null,
+        }).eq("id", taskId).eq("tenant_id", ctx.tenantId);
+        if (prepared.error) return { ok: false, message: describeError(prepared.error) };
+
+        const decision = await supabase.from("task_decisions").insert({
+          title: `${SELFTEST_PREFIX} Votum-Rücknahme (${ctx.runId})`,
+          description: SELFTEST_MARKER,
+          status: "active",
+          created_by: ctx.userId,
+          tenant_id: ctx.tenantId,
+          task_id: taskId,
+          visible_to_all: false,
+        }).select("id").single();
+        if (decision.error || !decision.data) return { ok: false, message: describeError(decision.error) };
+        ctx.trackRecord({ table: "task_decisions", id: decision.data.id });
+        const participant = await supabase.from("task_decision_participants")
+          .insert({ decision_id: decision.data.id, user_id: ctx.userId }).select("id").single();
+        if (participant.error || !participant.data) return { ok: false, message: describeError(participant.error) };
+        ctx.trackRecord({ table: "task_decision_participants", id: participant.data.id });
+
+        const vote = async () => {
+          const response = await supabase.from("task_decision_responses")
+            .insert({ decision_id: decision.data.id, participant_id: participant.data.id, response_type: "yes", comment: SELFTEST_MARKER })
+            .select("id").single();
+          if (response.error || !response.data) throw new Error(describeError(response.error));
+          ctx.trackRecord({ table: "task_decision_responses", id: response.data.id });
+        };
+        const withdraw = () => supabase.rpc("withdraw_decision_response", {
+          _decision_id: decision.data.id, _participant_id: participant.data.id,
+        });
+        const readTask = async () => {
+          const { data, error } = await supabase.from("tasks")
+            .select("ball_owner,ball_assignee_id,next_action,next_action_due,timeline").eq("id", taskId).single();
+          if (error || !data) throw new Error(describeError(error));
+          return data;
+        };
+
+        // 1. Votum -> Rücknahme: der Vorher-Zustand kehrt zurück, kein Votum mehr im Verlauf.
+        await vote();
+        const voted = await readTask();
+        const withdrawal = await withdraw();
+        if (withdrawal.error) return { ok: false, message: describeError(withdrawal.error) };
+        const report = withdrawal.data as { status?: string; removed_timeline_entries?: number } | null;
+        const restored = await readTask();
+        const restoredOk = report?.status === "restored"
+          && report.removed_timeline_entries === 1
+          && restored.ball_owner === "deputy" && restored.ball_assignee_id === ctx.userId
+          && restored.next_action === "Rückmeldung prüfen" && restored.next_action_due === null
+          && !timelineTexts(restored.timeline).some((text) => text.includes("Votum-Rücknahme"));
+
+        // 2. Büro hat nach dem Votum gehandelt: nichts zurückdrehen, nur vermerken.
+        await vote();
+        const movedOn = await supabase.from("tasks").update({ next_action: "Freigabe erteilt" })
+          .eq("id", taskId).eq("tenant_id", ctx.tenantId);
+        if (movedOn.error) return { ok: false, message: describeError(movedOn.error) };
+        const second = await withdraw();
+        if (second.error) return { ok: false, message: describeError(second.error) };
+        const secondReport = second.data as { status?: string } | null;
+        const afterMove = await readTask();
+        const movedOk = secondReport?.status === "annotated"
+          && afterMove.ball_owner === "office" && afterMove.next_action === "Freigabe erteilt"
+          && timelineTexts(afterMove.timeline).some((text) => text.includes("zurückgenommen") && text.includes("weitergelaufen"));
+
+        const voteJumped = voted.ball_owner === "office" && voted.next_action === "Freigabe umsetzen"
+          && timelineTexts(voted.timeline).filter((text) => text.includes("Votum-Rücknahme")).length === 1;
+        const ok = voteJumped && restoredOk && movedOk;
+        return {
+          ok,
+          message: ok
+            ? "Die Rücknahme gibt Ball, nächsten Schritt und Frist zurück und entfernt den Votum-Eintrag; die weitergelaufene Aufgabe bleibt stehen und wird nur vermerkt."
+            : "Rücknahme des Votums weicht ab.",
+          details: { voteJumped, restoredOk, movedOk, report, secondReport, restored, afterMove },
         };
       },
     },

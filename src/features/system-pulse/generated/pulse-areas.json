@@ -962,7 +962,8 @@
             "Fristen werden nach Berliner Tagen gruppiert; Verwerfen löscht nur die Frist und Rückgängig stellt sie wieder her",
             "Abschluss setzt completed_at, Wiederöffnen entfernt es",
             "Wiederholungsregel legt beim Abschluss genau eine Folgeaufgabe an",
-            "Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal"
+            "Votum zu einer verknüpften Entscheidung holt den Ball zurück und erzeugt die Folgeaufgabe genau einmal",
+            "Rücknahme des Votums gibt Ball, nächsten Schritt und Frist zurück und entfernt den Votum-Eintrag; eine weitergelaufene Aufgabe bleibt stehen und wird nur vermerkt"
           ],
           "tables": [
             "tasks",
@@ -973,6 +974,7 @@
             "task_statuses"
           ],
           "features": [
+            "decisions.withdraw-vote",
             "mywork.dashboard",
             "tasks.assign",
             "tasks.complete",
@@ -1032,6 +1034,10 @@
             {
               "id": "decision-ball",
               "label": "Votum holt den Ball zurück; Folgeaufgabe entsteht genau einmal"
+            },
+            {
+              "id": "decision-ball-withdrawal",
+              "label": "Rücknahme des Votums stellt Ball und Schritt wieder her"
             },
             {
               "id": "tenant-boundary",
@@ -1302,6 +1308,7 @@
           "description": "Erstellt eine Entscheidung, fügt sich selbst als Teilnehmer hinzu, prüft die Default-Antwortoptionen, archiviert die Entscheidung und liest jedes geschriebene Feld zurück.",
           "checks": [
             "Ja, Nein und Rückfrage werden gespeichert und nachweisbar zurückgenommen",
+            "Die Rücknahme eines Votums an einer verknüpften Aufgabe gibt Ball und nächsten Schritt zurück und entfernt den Votum-Eintrag",
             "Eine geänderte Antwort schreibt den bisherigen und den neuen Stand in task_decision_response_history",
             "Anhang-Metadaten hängen an der Entscheidung, sind für Teilnehmende lesbar und wieder entfernbar (ohne Datei-Upload)",
             "Kommentar und Antwort werden gespeichert; Emoji-Reaktionen folgen der Allowlist, sind je Person eindeutig und wieder entfernbar",
@@ -1314,6 +1321,8 @@
             "task_decision_participants",
             "task_decision_responses",
             "task_decision_response_history",
+            "task_decision_vote_effects",
+            "tasks",
             "task_decision_attachments",
             "task_decision_comments",
             "task_decision_comment_reactions",
@@ -1328,6 +1337,7 @@
             "decisions.participants",
             "decisions.remind",
             "decisions.vote",
+            "decisions.withdraw-vote",
             "mywork.dashboard",
             "tasks.link-decision"
           ],
@@ -1351,6 +1361,10 @@
             {
               "id": "withdraw-responses",
               "label": "Ja, Nein und Rückfrage speichern und nachweisbar zurücknehmen"
+            },
+            {
+              "id": "withdraw-task-vote",
+              "label": "Rücknahme eines Votums an einer verknüpften Aufgabe"
             },
             {
               "id": "check-options",

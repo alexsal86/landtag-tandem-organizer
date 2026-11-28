@@ -73,6 +73,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `letters.attachments` | `letters.create` |
 | `decisions.participants` | `decisions.create` |
 | `decisions.vote` | `decisions.participants` |
+| `decisions.withdraw-vote` | `decisions.vote` |
 | `decisions.change-vote` | `decisions.vote` |
 | `decisions.comments` | `decisions.create` |
 | `decisions.attachments` | `decisions.create` |

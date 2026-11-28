@@ -79,13 +79,12 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
     if (!decision.participant_id || undoing) return;
     setUndoing(true);
     try {
-      const { error } = await supabase
-        .from('task_decision_responses')
-        .delete()
-        .eq('decision_id', decision.id)
-        .eq('participant_id', decision.participant_id)
-        .is('parent_response_id', null)
-        .select('id');
+      // Die Rücknahme läuft über den RPC, weil er die vom Votum ausgelöste
+      // Aufgabenwirkung (Ball, nächster Schritt, Timeline) mit zurücknimmt.
+      const { error } = await supabase.rpc('withdraw_decision_response', {
+        _decision_id: decision.id,
+        _participant_id: decision.participant_id,
+      });
       if (error) throw error;
 
       const { data: remaining, error: verifyError } = await supabase

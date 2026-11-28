@@ -15918,6 +15918,89 @@ export type Database = {
           },
         ]
       }
+      task_decision_vote_effects: {
+        Row: {
+          applied_ball_assignee_id: string | null
+          applied_ball_owner: string
+          applied_next_action: string | null
+          applied_next_action_due: string | null
+          created_at: string
+          decision_id: string
+          previous_ball_assignee_id: string | null
+          previous_ball_owner: string | null
+          previous_next_action: string | null
+          previous_next_action_due: string | null
+          response_id: string
+          task_id: string
+          tenant_id: string
+          timeline_entry_ids: Json
+          updated_at: string
+        }
+        Insert: {
+          applied_ball_assignee_id?: string | null
+          applied_ball_owner: string
+          applied_next_action?: string | null
+          applied_next_action_due?: string | null
+          created_at?: string
+          decision_id: string
+          previous_ball_assignee_id?: string | null
+          previous_ball_owner?: string | null
+          previous_next_action?: string | null
+          previous_next_action_due?: string | null
+          response_id: string
+          task_id: string
+          tenant_id: string
+          timeline_entry_ids?: Json
+          updated_at?: string
+        }
+        Update: {
+          applied_ball_assignee_id?: string | null
+          applied_ball_owner?: string
+          applied_next_action?: string | null
+          applied_next_action_due?: string | null
+          created_at?: string
+          decision_id?: string
+          previous_ball_assignee_id?: string | null
+          previous_ball_owner?: string | null
+          previous_next_action?: string | null
+          previous_next_action_due?: string | null
+          response_id?: string
+          task_id?: string
+          tenant_id?: string
+          timeline_entry_ids?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_decision_vote_effects_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "task_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_decision_vote_effects_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: true
+            referencedRelation: "task_decision_responses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_decision_vote_effects_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_decision_vote_effects_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_decisions: {
         Row: {
           archived_at: string | null
@@ -21145,6 +21228,10 @@ export type Database = {
       valid_bw_poll_shares: {
         Args: { other: number; shares: Json }
         Returns: boolean
+      }
+      withdraw_decision_response: {
+        Args: { _decision_id: string; _participant_id?: string }
+        Returns: Json
       }
     }
     Enums: {

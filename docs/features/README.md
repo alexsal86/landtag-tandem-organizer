@@ -8,24 +8,24 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Kennzahl | Wert |
 |---|---:|
-| Erfasste Funktionen | 267 |
+| Erfasste Funktionen | 268 |
 | Funktionsbereiche | 16 |
 | Unterbereiche | 112 |
-| Implementiert | 263 |
+| Implementiert | 264 |
 | Teilweise implementiert | 2 |
 | Deaktiviert | 0 |
 | Potenziell verwaist | 0 |
 | Prüfkandidaten (offene Punkte) | 52 |
-| Funktionen mit Selbsttest | 138 |
+| Funktionen mit Selbsttest | 139 |
 | Funktionen mit Unit-Test | 67 |
 | Funktionen mit Integrationstest | 4 |
 | Funktionen mit Browser-Test | 4 |
 | Funktionen mit Security-Test | 1 |
 | Funktionen ohne zugeordneten Test | 88 |
-| Funktionen ohne Dokumentationsverweis | 176 |
-| Funktionen mit bekannten Einschränkungen | 88 |
+| Funktionen ohne Dokumentationsverweis | 177 |
+| Funktionen mit bekannten Einschränkungen | 89 |
 | Nicht nachweisbar eingebundene Funktionen | 1 |
-| Technische Zuordnungen | 1358 |
+| Technische Zuordnungen | 1360 |
 
 ## Funktionsbereiche
 
@@ -35,7 +35,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 | [Aufgaben & Stafette](./aufgaben.md) | 12 | 18 | 18 | 1 | 9 |
 | [Automatisierung & Workflows](./automation.md) | 8 | 15 | 15 | 9 | 8 |
 | [Dokumente, Briefe & Annotationen](./dokumente.md) | 3 | 18 | 18 | 2 | 14 |
-| [Entscheidungen](./entscheidungen.md) | 7 | 10 | 10 | 3 | 8 |
+| [Entscheidungen](./entscheidungen.md) | 7 | 11 | 11 | 3 | 9 |
 | [Externe Schnittstellen](./schnittstellen.md) | 7 | 10 | 10 | 7 | 5 |
 | [Jour fixe, Dossiers & Themen](./organisation.md) | 5 | 19 | 18 | 10 | 16 |
 | [Kontakte & Netzwerk](./kontakte.md) | 10 | 16 | 16 | 0 | 12 |
@@ -52,7 +52,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Kategorie | Funktionen |
 |---|---:|
-| fachlich | 175 |
+| fachlich | 176 |
 | administrativ | 26 |
 | automatisiert | 21 |
 | integration | 27 |
@@ -63,7 +63,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Status | Funktionen |
 |---|---:|
-| implementiert | 263 |
+| implementiert | 264 |
 | teilweise | 2 |
 | deaktiviert | 0 |
 | verwaist | 0 |
@@ -75,7 +75,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Einbindung | Funktionen |
 |---|---:|
-| UI | 135 |
+| UI | 136 |
 | systemseitig | 37 |
 | rollenabhängig | 90 |
 | Feature Flag | 1 |
@@ -87,7 +87,7 @@ Der Katalog ist das führende Verzeichnis des tatsächlich implementierten Funkt
 
 | Abdeckung | Funktionen |
 |---|---:|
-| Selbsttest | 119 |
+| Selbsttest | 120 |
 | Unit-Test | 40 |
 | Integrationstest | 2 |
 | Browser-Test | 0 |

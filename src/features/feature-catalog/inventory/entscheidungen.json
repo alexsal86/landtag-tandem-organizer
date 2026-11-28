@@ -133,6 +133,47 @@
       "dependsOn": ["decisions.participants"]
     },
     {
+      "id": "decisions.withdraw-vote",
+      "subarea": "Abstimmung",
+      "name": "Votum zurücknehmen",
+      "description": "Nimmt die eigene Antwort samt ihrer Aufgabenwirkung zurück: Ball, nächster Schritt und Frist kehren auf den Stand vor dem Votum zurück, solange die Aufgabe unverändert ist; eine weitergelaufene Aufgabe erhält nur einen Rücknahme-Vermerk.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/dashboard/DashboardDecisionsWidget.tsx",
+        "supabase/migrations/20261128090000_decision_vote_withdrawal_snapshot.sql"
+      ],
+      "components": [
+        "src/components/dashboard/DashboardDecisionsWidget.tsx"
+      ],
+      "rpcs": [
+        "withdraw_decision_response"
+      ],
+      "tables": [
+        "task_decision_responses",
+        "task_decision_vote_effects",
+        "task_decision_participants",
+        "tasks"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "dependsOn": ["decisions.vote"],
+      "scenarios": [
+        "decision-lifecycle",
+        "task-lifecycle"
+      ],
+      "limitations": [
+        "Die Zustellung der Votum-Benachrichtigung lässt sich nicht zurückholen; die Rücknahme berührt sie nicht, weil sie zum Votum gehört hat.",
+        "Ein Votum aus der Zeit vor dem Snapshot (Migration 20261128090000) hat keinen gespeicherten Vorher-Zustand; seine Rücknahme vermerkt das im Verlauf und lässt den Ball beim Büro."
+      ]
+    },
+    {
       "id": "decisions.change-vote",
       "subarea": "Abstimmung",
       "name": "Antwort ändern und Verlauf einsehen",
