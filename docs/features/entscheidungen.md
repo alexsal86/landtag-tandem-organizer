@@ -548,7 +548,7 @@ Der Digest speichert seine gebündelten Kommentare, Antworten, Reaktionen und Er
 - Keine.
 
 ### `decisions.delivery-preferences` — Persönliche Zustellfrequenz und Ruhezeiten
-Erlaubt je Person und Mandant sofort, gebündelt oder aus; Ruhezeiten blockieren Pushes, kritische Frist- und Rückzugsmeldungen gehen weiterhin sofort durch. Der Digest bündelt nur für Personen mit gebündelter Zustellung.
+Erlaubt je Person und Mandant sofort, gebündelt oder aus, wählbar in den Benachrichtigungseinstellungen; Ruhezeiten blockieren Pushes, kritische Frist- und Rückzugsmeldungen gehen weiterhin sofort durch. Bestehende Mitgliedschaften wurden auf gebündelt gesetzt, neue starten mit sofort.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -574,11 +574,13 @@ Erlaubt je Person und Mandant sofort, gebündelt oder aus; Ruhezeiten blockieren
 
 - supabase/migrations/20261128229000_decision_delivery_preferences.sql
 - supabase/migrations/20261128230000_decision_delivery_preferences_selftest.sql
+- supabase/migrations/20261128239000_backfill_decision_delivery_mode.sql
+- src/components/notifications/NotificationSettings.tsx
 - src/features/selftest/scenarios/decision-lifecycle.ts
 
 **Bekannte Einschränkungen**
 
-- Echter Push-Versand und die Einstellungsoberfläche sind nicht geprüft; die Frequenz ist über die RPC erreichbar, eine eigene Karte in den Benachrichtigungseinstellungen fehlt noch.
+- Echter Push-Versand und die Darstellung der Karte im Browser sind nicht geprüft.
 
 **Offene Prüfpunkte**
 

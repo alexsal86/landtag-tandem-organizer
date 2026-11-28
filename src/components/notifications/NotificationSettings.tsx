@@ -1,17 +1,19 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import type { ChangeEvent, JSX } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
-import { Clock, Mail, Smartphone, ChevronDown, ChevronRight } from 'lucide-react';
+import { Clock, Mail, Smartphone, ChevronDown, ChevronRight, Inbox } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNotifications } from '@/hooks/useNotifications';
 import type { NotificationType } from '@/hooks/useNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useTenant } from '@/hooks/useTenant';
 import { notify } from "@/lib/notify";
 import { toast } from "@/hooks/use-toast";
 interface NotificationTypeSettings {
@@ -39,6 +41,14 @@ type NotificationSettingField = 'is_enabled' | 'push_enabled' | 'email_enabled';
 
 const DEFAULT_QUIET_HOURS_START = '22:00';
 const DEFAULT_QUIET_HOURS_END = '08:00';
+
+type DecisionDeliveryMode = 'immediate' | 'digest' | 'off';
+
+const DELIVERY_MODE_LABELS: Record<DecisionDeliveryMode, string> = {
+  immediate: 'Sofort',
+  digest: 'Gebündelt',
+  off: 'Aus',
+};
 
 const CATEGORY_META: Record<string, { label: string; icon: string; order: number }> = {
   tasks: { label: 'Aufgaben', icon: '✅', order: 1 },
@@ -188,10 +198,14 @@ const CategorySection = ({
 
 export const NotificationSettings = (): JSX.Element => {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const { pushSupported, pushPermission, requestPushPermission, subscribeToPush } = useNotifications();
 
   const [settings, setSettings] = useState<NotificationTypeSettings[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [deliveryMode, setDeliveryMode] = useState<DecisionDeliveryMode>('immediate');
+  const [deliveryLoading, setDeliveryLoading] = useState<boolean>(false);
+  const [deliverySaving, setDeliverySaving] = useState<boolean>(false);
   const [quietHoursStart, setQuietHoursStart] = useState<string>(DEFAULT_QUIET_HOURS_START);
   const [quietHoursEnd, setQuietHoursEnd] = useState<string>(DEFAULT_QUIET_HOURS_END);
   const [hasActiveSubscription, setHasActiveSubscription] = useState<boolean | null>(null);
@@ -226,6 +240,39 @@ export const NotificationSettings = (): JSX.Element => {
       void checkActiveSubscription();
     }
   }, [checkActiveSubscription, pushPermission]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadDeliveryMode = async (): Promise<void> => {
+      if (!user || !currentTenant) {
+        setDeliveryMode('immediate');
+        setDeliveryLoading(false);
+        return;
+      }
+
+      setDeliveryLoading(true);
+      const { data, error } = await supabase
+        .from('decision_notification_preferences')
+        .select('delivery_mode')
+        .eq('user_id', user.id)
+        .eq('tenant_id', currentTenant.id)
+        .maybeSingle();
+
+      if (cancelled) return;
+      if (error) {
+        debugConsole.error('Error loading decision delivery mode:', error);
+        setDeliveryMode('immediate');
+      } else {
+        const mode = data?.delivery_mode;
+        setDeliveryMode(mode === 'digest' || mode === 'off' ? mode : 'immediate');
+      }
+      setDeliveryLoading(false);
+    };
+
+    void loadDeliveryMode();
+    return () => { cancelled = true; };
+  }, [currentTenant, user]);
 
   useEffect(() => {
     const loadSettings = async (): Promise<void> => {
@@ -416,6 +463,31 @@ export const NotificationSettings = (): JSX.Element => {
     }
   }, [settings, toast, user]);
 
+  const saveDeliveryMode = useCallback(async (): Promise<void> => {
+    if (!currentTenant) {
+      notify.error('Kein Arbeitsbereich', { description: 'Bitte zuerst einen Arbeitsbereich wählen.' });
+      return;
+    }
+
+    setDeliverySaving(true);
+    try {
+      const { error } = await supabase.rpc('set_decision_notification_preference', {
+        _tenant_id: currentTenant.id,
+        _delivery_mode: deliveryMode,
+      });
+
+      if (error) throw error;
+      notify.success('Gespeichert', {
+        description: `Entscheidungs-Meldungen werden jetzt ${DELIVERY_MODE_LABELS[deliveryMode].toLowerCase()} zugestellt.`,
+      });
+    } catch (error: unknown) {
+      debugConsole.error('Error saving decision delivery mode:', error);
+      notify.error('Fehler', { description: 'Zustellfrequenz konnte nicht gespeichert werden.' });
+    } finally {
+      setDeliverySaving(false);
+    }
+  }, [currentTenant, deliveryMode]);
+
   const updateQuietHours = useCallback(async (): Promise<void> => {
     if (!user) {
       return;
@@ -557,6 +629,48 @@ export const NotificationSettings = (): JSX.Element => {
           </div>
           <Button onClick={(): void => void updateQuietHours()} disabled={loading}>
             Ruhezeiten speichern
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Inbox className="h-5 w-5" />
+            Entscheidungs-Meldungen
+          </CardTitle>
+          <CardDescription>
+            Persönliche Zustellfrequenz für Kommentare, Reaktionen, Ergebnisse und Anfragen.
+            Frist-, Rückzugs- und Erwähnungsmeldungen bleiben sofort.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="max-w-sm space-y-2">
+            <Label htmlFor="decision-delivery-mode">Zustellfrequenz</Label>
+            <Select
+              value={deliveryMode}
+              onValueChange={(value: string): void => {
+                setDeliveryMode(value === 'digest' || value === 'off' ? value : 'immediate');
+              }}
+              disabled={deliveryLoading || deliverySaving || !currentTenant}
+            >
+              <SelectTrigger id="decision-delivery-mode">
+                <SelectValue placeholder="Zustellfrequenz wählen" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="immediate">Sofort</SelectItem>
+                <SelectItem value="digest">Gebündelt</SelectItem>
+                <SelectItem value="off">Aus</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {deliveryMode === 'immediate' && 'Jede Meldung wird sofort zugestellt; Ruhezeiten gelten für Push.'}
+              {deliveryMode === 'digest' && 'Meldungen werden gesammelt und als Digest zugestellt.'}
+              {deliveryMode === 'off' && 'Unkritische Entscheidungs-Meldungen werden nicht zugestellt.'}
+            </p>
+          </div>
+          <Button onClick={(): void => void saveDeliveryMode()} disabled={deliveryLoading || deliverySaving || !currentTenant}>
+            {deliverySaving ? 'Speichert…' : 'Zustellfrequenz speichern'}
           </Button>
         </CardContent>
       </Card>

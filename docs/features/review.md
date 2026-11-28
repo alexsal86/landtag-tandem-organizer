@@ -508,7 +508,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `decisions.delivery-preferences`
 
-- Echter Push-Versand und die Einstellungsoberfläche sind nicht geprüft; die Frequenz ist über die RPC erreichbar, eine eigene Karte in den Benachrichtigungseinstellungen fehlt noch.
+- Echter Push-Versand und die Darstellung der Karte im Browser sind nicht geprüft.
 
 ### `decisions.notification-metrics`
 

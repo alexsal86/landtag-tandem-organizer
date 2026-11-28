@@ -9,7 +9,18 @@ Entscheidungs-Meldungen lassen sich je Person und Mandant steuern:
 | `off` | keine unkritischen Entscheidungs-Meldungen |
 
 Gespeichert in `decision_notification_preferences` (eine Zeile je Person und Mandant).
-Gesetzt über `set_decision_notification_preference(tenant_id, delivery_mode)`.
+Gesetzt über `set_decision_notification_preference(tenant_id, delivery_mode)` und in den
+Benachrichtigungseinstellungen unter „Entscheidungs-Meldungen“ wählbar.
+
+## Standard
+
+- Bestehende aktive Mitgliedschaften wurden einmalig auf `digest` gesetzt, weil der
+  Digest vor der persönlichen Frequenz für alle aktiv war. Explizite Einstellungen
+  bleiben unangetastet.
+- Neue Nutzer ohne Zeile starten mit `immediate`; die Karte zeigt diesen Standard an.
+
+Die Karte zeigt die Frequenz des aktuellen Arbeitsbereichs und speichert über die RPC.
+Frist-, Rückzugs-, Alarm- und Erwähnungsmeldungen bleiben von der Frequenz ausgenommen.
 
 ## Kritische Ausnahmen
 
@@ -33,5 +44,4 @@ Ruhezeiten und `off`. Die typbezogene Abschaltung über
 `decision_delivery_preference_selftest` prüft Bündelung, Unterdrückung bei `off`,
 Ruhezeiten 22:00–08:00, Push außerhalb der Ruhezeiten und die sofortige Friständerung
 trotz `off`. Der Szenario-Schritt heißt `delivery-preferences`. Nicht geprüft: echter
-Push-Versand, Browserdarstellung und die Einstellungsoberfläche (die RPC ist vorhanden,
-eine eigene Karte in den Benachrichtigungseinstellungen fehlt noch).
+Push-Versand und die Darstellung der Karte im Browser.
