@@ -80,6 +80,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `decisions.daily-digest` | `decisions.notification-digest` |
 | `decisions.inbox-hygiene` | `decisions.notification-digest` |
 | `decisions.deadline-reminders` | `decisions.notification-digest` |
+| `decisions.creator-deadline-warnings` | `decisions.deadline-reminders` |
 | `decisions.digest-items` | `decisions.notification-digest` |
 | `decisions.result-summary` | `decisions.notification-digest` |
 | `decisions.notification-actions` | `decisions.vote` |

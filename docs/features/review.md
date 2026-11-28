@@ -299,7 +299,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (128)
+## Funktionen mit Einschränkungen oder offenen Punkten (129)
 
 ### `mywork.dashboard`
 
@@ -500,6 +500,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `decisions.deadline-reminders`
 
 - Nicht geprüft: echter Cron-Lauf, Push-Versand, Browserdarstellung und die Wirkung auf die Antwortquote. Eine während der Ruhezeit bereits abgelaufene Stufe wird nicht nachgeholt.
+
+### `decisions.creator-deadline-warnings`
+
+- Nicht geprüft: echter Cron-Lauf, Push-Versand, Browserdarstellung und die Wirkung auf die Antwortquote. Eine nach bereits versendeter Ersteller-Stufe verlängerte Frist löst keine neue Warnung aus.
 
 ### `decisions.digest-items`
 

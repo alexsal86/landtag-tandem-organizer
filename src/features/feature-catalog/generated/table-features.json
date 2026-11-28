@@ -1056,6 +1056,11 @@
   ],
   "decision_deadline_reminders": [
     {
+      "id": "decisions.creator-deadline-warnings",
+      "name": "Fristwarnungen für den Ersteller",
+      "area": "entscheidungen"
+    },
+    {
       "id": "decisions.deadline-reminders",
       "name": "Frist-Erinnerungen vor Ablauf",
       "area": "entscheidungen"
@@ -2891,6 +2896,11 @@
       "area": "entscheidungen"
     },
     {
+      "id": "decisions.creator-deadline-warnings",
+      "name": "Fristwarnungen für den Ersteller",
+      "area": "entscheidungen"
+    },
+    {
       "id": "decisions.deadline-reminders",
       "name": "Frist-Erinnerungen vor Ablauf",
       "area": "entscheidungen"
@@ -3638,6 +3648,11 @@
       "area": "entscheidungen"
     },
     {
+      "id": "decisions.creator-deadline-warnings",
+      "name": "Fristwarnungen für den Ersteller",
+      "area": "entscheidungen"
+    },
+    {
       "id": "decisions.daily-digest",
       "name": "Optionaler Tagesüberblick",
       "area": "entscheidungen"
@@ -3684,6 +3699,11 @@
     {
       "id": "decisions.change-vote",
       "name": "Antwort ändern und Verlauf einsehen",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.creator-deadline-warnings",
+      "name": "Fristwarnungen für den Ersteller",
       "area": "entscheidungen"
     },
     {
@@ -3750,6 +3770,11 @@
     {
       "id": "decisions.create",
       "name": "Entscheidung anlegen",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.creator-deadline-warnings",
+      "name": "Fristwarnungen für den Ersteller",
       "area": "entscheidungen"
     },
     {

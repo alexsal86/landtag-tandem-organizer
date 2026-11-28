@@ -1315,6 +1315,7 @@
             "Das Anmahnen speichert den Eintrag mit Absender und Notiz und weist die zweite Mahnung innerhalb von 24 Stunden ab",
             "Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen",
             "Anfrage-, Kommentar-, Reaktions-, Ersteller-Antwort- und Abschlussmeldung entstehen im Mandanten der Entscheidung",
+            "Der Ersteller erhält vor Ablauf und einmalig bei Überfälligkeit eine Warnung mit der Zahl fehlender Antworten",
             "Teilnehmer-Insert stellt genau eine Einladungs-Versandzeile ein, die der Worker übernimmt und verbucht"
           ],
           "tables": [
@@ -1336,6 +1337,7 @@
             "decisions.comment-mentions",
             "decisions.comments",
             "decisions.create",
+            "decisions.creator-deadline-warnings",
             "decisions.daily-digest",
             "decisions.deadline-reminders",
             "decisions.delivery-preferences",
@@ -1420,6 +1422,10 @@
             {
               "id": "deadline-reminders",
               "label": "Frist-Erinnerungen 24 h/2 h einmalig und mit Ruhezeiten"
+            },
+            {
+              "id": "creator-deadline-warnings",
+              "label": "Ersteller-Warnung vor Ablauf und einmalig bei Überfälligkeit"
             },
             {
               "id": "inbox-hygiene",

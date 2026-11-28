@@ -28,9 +28,11 @@ export const DecisionQuickResponse = ({ notification, onDone }: DecisionQuickRes
   const [options, setOptions] = useState<ResponseOption[]>([]);
   const [saving, setSaving] = useState<string | null>(null);
   const typeName = notification.notification_types?.name ?? '';
-  const data = (notification.data ?? {}) as { decision_id?: unknown };
+  const data = (notification.data ?? {}) as { decision_id?: unknown; creator_warning?: unknown };
   const decisionId = typeof data.decision_id === 'string' ? data.decision_id : null;
-  const isQuickType = Boolean(decisionId) && QUICK_TYPES.has(typeName);
+  // Der Ersteller kann nicht selbst abstimmen; seine Fristwarnung zeigt keine
+  // Schnellantworten, sondern führt nur zur Entscheidung.
+  const isQuickType = Boolean(decisionId) && QUICK_TYPES.has(typeName) && data.creator_warning !== true;
 
   useEffect(() => {
     if (!decisionId || !isQuickType) return;

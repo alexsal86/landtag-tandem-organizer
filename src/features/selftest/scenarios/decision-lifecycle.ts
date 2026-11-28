@@ -35,6 +35,7 @@ export const decisionLifecycleScenario: TestScenario = {
     "Das Anmahnen speichert den Eintrag mit Absender und Notiz und weist die zweite Mahnung innerhalb von 24 Stunden ab",
     "Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen",
     "Anfrage-, Kommentar-, Reaktions-, Ersteller-Antwort- und Abschlussmeldung entstehen im Mandanten der Entscheidung",
+    "Der Ersteller erhält vor Ablauf und einmalig bei Überfälligkeit eine Warnung mit der Zahl fehlender Antworten",
     "Teilnehmer-Insert stellt genau eine Einladungs-Versandzeile ein, die der Worker übernimmt und verbucht",
   ],
   limitations: [
@@ -506,6 +507,21 @@ export const decisionLifecycleScenario: TestScenario = {
           message: report?.ok === true
             ? "24-h- und 2-h-Erinnerung kommen je einmal, Ruhezeiten verschieben den Versand und verhindern keine Erinnerung dauerhaft."
             : (report?.skipped ?? report?.message ?? "Frist-Erinnerungs-Selbsttest fehlgeschlagen."),
+          details: report?.checks,
+        };
+      },
+    },
+    {
+      id: "creator-deadline-warnings", label: "Ersteller-Warnung vor Ablauf und einmalig bei Überfälligkeit", kind: "workflow",
+      run: async (ctx) => {
+        const { data, error } = await supabase.rpc("decision_creator_deadline_warning_selftest", { p_tenant: ctx.tenantId });
+        if (error) return { ok: false, message: describeError(error) };
+        const report = data as { ok?: boolean; message?: string; skipped?: string; checks?: Record<string, unknown> } | null;
+        return {
+          ok: report?.ok === true,
+          message: report?.ok === true
+            ? "Der Ersteller erhält vor Ablauf und einmal bei Überfälligkeit eine Warnung mit der aktuellen Zahl fehlender Antworten; ohne offene Antworten bleibt sie aus."
+            : (report?.skipped ?? report?.message ?? "Ersteller-Fristwarnungs-Selbsttest fehlgeschlagen."),
           details: report?.checks,
         };
       },

@@ -27,6 +27,11 @@ Alle Trigger sind `SECURITY DEFINER` mit `SET search_path = pg_catalog, public` 
 prüfen die aktive Mitgliedschaft der Empfängerin bzw. des Empfängers im Mandanten der
 Entscheidung. Wer nicht Mitglied ist, erhält keine Meldung.
 
+Frist-Erinnerungen an Teilnehmende und Warnungen an den Ersteller entstehen nicht per
+Trigger, sondern über `dispatch_decision_deadline_reminders()`. Die Ersteller-Warnung
+nutzt denselben Typ, trägt `creator_warning=true` und nennt die Zahl fehlender
+Antworten; Einzelheiten stehen in [decision-deadline-reminders.md](decision-deadline-reminders.md).
+
 Der Meldungsteil ist von der Fachaktion entkoppelt: Die vier Trigger-Funktionen führen
 ihre Arbeit in einem inneren Block mit `EXCEPTION WHEN OTHERS` aus. Ein Fehler beim
 Auflösen oder Zustellen wird als `WARNING` mit Trigger-Name und Fehlertext protokolliert,

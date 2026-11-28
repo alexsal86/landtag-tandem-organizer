@@ -6,7 +6,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 
 ## Funktionen je Rolle
 
-### `abgeordneter` — 196 Funktionen
+### `abgeordneter` — 197 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -66,6 +66,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `decisions.daily-digest` — Optionaler Tagesüberblick
 - `decisions.inbox-hygiene` — Inbox-Hygiene für Entscheidungs-Meldungen
 - `decisions.deadline-reminders` — Frist-Erinnerungen vor Ablauf
+- `decisions.creator-deadline-warnings` — Fristwarnungen für den Ersteller
 - `decisions.digest-items` — Aufklappbarer Digest mit Einzelmeldungen
 - `decisions.result-summary` — Aggregierte Antwortzahlen im Ergebnis
 - `decisions.comment-mentions` — Direkte Erwähnungen
@@ -205,7 +206,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.global-question` — Globale Wissensfrage aus jedem Bereich
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 
-### `bueroleitung` — 241 Funktionen
+### `bueroleitung` — 242 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -279,6 +280,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `decisions.daily-digest` — Optionaler Tagesüberblick
 - `decisions.inbox-hygiene` — Inbox-Hygiene für Entscheidungs-Meldungen
 - `decisions.deadline-reminders` — Frist-Erinnerungen vor Ablauf
+- `decisions.creator-deadline-warnings` — Fristwarnungen für den Ersteller
 - `decisions.digest-items` — Aufklappbarer Digest mit Einzelmeldungen
 - `decisions.result-summary` — Aggregierte Antwortzahlen im Ergebnis
 - `decisions.comment-mentions` — Direkte Erwähnungen
@@ -449,7 +451,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `knowledge.persons` — Wissenspersonen und Zuständigkeit
 - `knowledge.management` — Wissensverwaltung
 
-### `mitarbeiter` — 201 Funktionen
+### `mitarbeiter` — 202 Funktionen
 
 - `mywork.dashboard` — Meine Arbeit – Dashboard
 - `mywork.dashboard.today-priorities` — Heute zuerst
@@ -511,6 +513,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 - `decisions.daily-digest` — Optionaler Tagesüberblick
 - `decisions.inbox-hygiene` — Inbox-Hygiene für Entscheidungs-Meldungen
 - `decisions.deadline-reminders` — Frist-Erinnerungen vor Ablauf
+- `decisions.creator-deadline-warnings` — Fristwarnungen für den Ersteller
 - `decisions.digest-items` — Aufklappbarer Digest mit Einzelmeldungen
 - `decisions.result-summary` — Aggregierte Antwortzahlen im Ergebnis
 - `decisions.comment-mentions` — Direkte Erwähnungen
@@ -944,6 +947,7 @@ Die Angaben sind deklarierte Mindestrollen. Die tatsächlich wirksame Berechtigu
 | `decisions.comment-mentions` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `decisions.comments` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `decisions.create` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
+| `decisions.creator-deadline-warnings` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `decisions.daily-digest` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `decisions.deadline-reminders` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
 | `decisions.delivery-preferences` | `abgeordneter`, `bueroleitung`, `mitarbeiter` |
