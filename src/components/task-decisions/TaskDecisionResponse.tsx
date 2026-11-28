@@ -221,14 +221,8 @@ export const TaskDecisionResponse = ({
       // Abschluss- und Kommentar-Meldungen entstehen per Trigger auf
       // task_decision_responses im Mandanten der Entscheidung.
 
-      const currentUser = (await supabase.auth.getUser()).data.user;
-      if (currentUser) {
-        await supabase
-          .from('notifications')
-          .update({ is_read: true })
-          .eq('user_id', currentUser.id)
-          .eq('navigation_context', 'decisions');
-      }
+      // Nur die Anfrage-Meldung dieser Entscheidung als gelesen markieren.
+      await supabase.rpc('mark_decision_request_notifications_read', { _decision_id: decisionId });
 
       // Auto-create appointment when approving a Terminanfrage
       if (responseType === 'yes') {

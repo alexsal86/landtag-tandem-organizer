@@ -2832,6 +2832,11 @@
       "area": "entscheidungen"
     },
     {
+      "id": "decisions.inbox-hygiene",
+      "name": "Inbox-Hygiene für Entscheidungs-Meldungen",
+      "area": "entscheidungen"
+    },
+    {
       "id": "decisions.notification-digest",
       "name": "Gebündelte Entscheidungs-Meldungen",
       "area": "entscheidungen"
@@ -2881,6 +2886,11 @@
     {
       "id": "decisions.digest-items",
       "name": "Aufklappbarer Digest mit Einzelmeldungen",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.inbox-hygiene",
+      "name": "Inbox-Hygiene für Entscheidungs-Meldungen",
       "area": "entscheidungen"
     },
     {
@@ -3713,6 +3723,11 @@
     {
       "id": "decisions.deadline-reminders",
       "name": "Frist-Erinnerungen vor Ablauf",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.inbox-hygiene",
+      "name": "Inbox-Hygiene für Entscheidungs-Meldungen",
       "area": "entscheidungen"
     },
     {

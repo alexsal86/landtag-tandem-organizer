@@ -312,6 +312,47 @@
       ]
     },
     {
+      "id": "decisions.inbox-hygiene",
+      "subarea": "Meldungen",
+      "name": "Inbox-Hygiene für Entscheidungs-Meldungen",
+      "description": "Öffnen oder Beantworten markiert die Anfrage-Meldungen genau dieser Entscheidung als gelesen. Beim Archivieren verfallen offene Anfrage-, Erinnerungs-, Digest-, Kommentar-, Antwort-, Reaktions- und Erwähnungsmeldungen; Ergebnis und Rückzug bleiben erhalten.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/migrations/20261128237000_decision_inbox_hygiene.sql",
+        "supabase/migrations/20261128238000_decision_inbox_hygiene_selftest.sql",
+        "src/components/task-decisions/TaskDecisionDetails.tsx",
+        "src/components/task-decisions/TaskDecisionResponse.tsx"
+      ],
+      "rpcs": [
+        "mark_decision_request_notifications_read",
+        "decision_inbox_hygiene_selftest"
+      ],
+      "tables": [
+        "notifications",
+        "notification_types",
+        "task_decisions"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "dependsOn": ["decisions.notification-digest"],
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "docs": [
+        "docs/decision-inbox-hygiene.md"
+      ],
+      "limitations": [
+        "Nicht geprüft: Browserdarstellung, Push-Versand und das Öffnen über andere Wege als die Detailansicht."
+      ]
+    },
+    {
       "id": "decisions.deadline-reminders",
       "subarea": "Meldungen",
       "name": "Frist-Erinnerungen vor Ablauf",

@@ -1339,6 +1339,7 @@
             "decisions.deadline-reminders",
             "decisions.delivery-preferences",
             "decisions.digest-items",
+            "decisions.inbox-hygiene",
             "decisions.notification-actions",
             "decisions.notification-digest",
             "decisions.notification-metrics",
@@ -1417,6 +1418,10 @@
             {
               "id": "deadline-reminders",
               "label": "Frist-Erinnerungen 24 h/2 h einmalig und mit Ruhezeiten"
+            },
+            {
+              "id": "inbox-hygiene",
+              "label": "Anfrage-Meldungen beim Öffnen lesen und beim Archivieren verfallen lassen"
             },
             {
               "id": "notification-metrics",

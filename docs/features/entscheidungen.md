@@ -6,8 +6,8 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **18** in **9** Unterbereichen
-- implementiert: **18**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **19** in **9** Unterbereichen
+- implementiert: **19**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **3**
 - ohne Dokumentationsverweis: **9**
 
@@ -29,6 +29,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `decisions.digest-items` Aufklappbarer Digest mit Einzelmeldungen | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.deadline-reminders` Frist-Erinnerungen vor Ablauf | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.notification-digest` Gebündelte Entscheidungs-Meldungen | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `decisions.inbox-hygiene` Inbox-Hygiene für Entscheidungs-Meldungen | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.notification-actions` Meldungen bedienbar machen | Meldungen | fachlich | implementiert | UI | Selbsttest |
 | `decisions.delivery-preferences` Persönliche Zustellfrequenz und Ruhezeiten | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.notification-metrics` Wirkung der Entscheidungs-Meldungen messen | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
@@ -84,6 +85,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `digest-items` | Digest zeigt Einzelmeldungen mit Person und Sprungziel | workflow | — |
 | `decision-lifecycle` | `comment-mentions` | Direkte Erwähnungen sofort und außerhalb des Digests zustellen | workflow | — |
 | `decision-lifecycle` | `deadline-reminders` | Frist-Erinnerungen 24 h/2 h einmalig und mit Ruhezeiten | workflow | — |
+| `decision-lifecycle` | `inbox-hygiene` | Anfrage-Meldungen beim Öffnen lesen und beim Archivieren verfallen lassen | workflow | — |
 | `decision-lifecycle` | `notification-metrics` | Zustellungen, Abschaltquote, Antwortzeit, Anstupser und Trigger-Fehler messen | workflow | — |
 | `decision-lifecycle` | `notification-actions` | Aus der Meldung abstimmen und Antwort aktualisieren | workflow | — |
 | `decision-lifecycle` | `digest` | Meldungen werden gebündelt und nur der Digest wird gepusht | workflow | — |
@@ -390,6 +392,44 @@ Fasst offene Kommentar-, Antwort- und Reaktionsmeldungen sowie Ergebnismeldungen
 **Bekannte Einschränkungen**
 
 - Nicht geprüft: echter Cron-Lauf, tatsächlicher Push-Versand, parallele Flush-Läufe und eine Oberfläche für die Mandanteneinstellung. Die Einstellung ist derzeit nur über set_decision_notification_timing erreichbar. Der Ersteller erhält kein Ergebnis-Digest; Frist und Rückzug werden bewusst nicht gebündelt.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `decisions.inbox-hygiene` — Inbox-Hygiene für Entscheidungs-Meldungen
+Öffnen oder Beantworten markiert die Anfrage-Meldungen genau dieser Entscheidung als gelesen. Beim Archivieren verfallen offene Anfrage-, Erinnerungs-, Digest-, Kommentar-, Antwort-, Reaktions- und Erwähnungsmeldungen; Ergebnis und Rückzug bleiben erhalten.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `mark_decision_request_notifications_read`, `decision_inbox_hygiene_selftest`
+- **Tabellen:** `notifications`, `notification_types`, `task_decisions`
+- **Abhängigkeiten:** `decisions.notification-digest`
+- **Selbsttests:** `decision-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/decision-inbox-hygiene.md`
+
+**Nachweise im Quellcode**
+
+- supabase/migrations/20261128237000_decision_inbox_hygiene.sql
+- supabase/migrations/20261128238000_decision_inbox_hygiene_selftest.sql
+- src/components/task-decisions/TaskDecisionDetails.tsx
+- src/components/task-decisions/TaskDecisionResponse.tsx
+
+**Bekannte Einschränkungen**
+
+- Nicht geprüft: Browserdarstellung, Push-Versand und das Öffnen über andere Wege als die Detailansicht.
 
 **Offene Prüfpunkte**
 

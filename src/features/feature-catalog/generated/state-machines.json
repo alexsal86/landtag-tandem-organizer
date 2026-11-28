@@ -5,7 +5,7 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 1006,
+    "migrationCount": 1008,
     "tsModules": [
       "src/components/letters/types.ts"
     ]
@@ -5311,6 +5311,7 @@
             "write:supabase/migrations/20260209100456_1f1d79dc-a773-4379-82bd-99a16d806d49.sql",
             "write:supabase/migrations/20261128210000_decision_notification_tenant.sql",
             "write:supabase/migrations/20261128218000_decision_lifecycle_notification_selftest.sql",
+            "write:supabase/migrations/20261128238000_decision_inbox_hygiene_selftest.sql",
             "guard:supabase/migrations/20261128217000_decision_lifecycle_notifications.sql"
           ]
         },
@@ -5371,7 +5372,8 @@
           "param": null,
           "sources": [
             "supabase/migrations/20251008092243_13bc77ce-3770-4a50-b88c-2444fb69206c.sql",
-            "supabase/migrations/20261128218000_decision_lifecycle_notification_selftest.sql"
+            "supabase/migrations/20261128218000_decision_lifecycle_notification_selftest.sql",
+            "supabase/migrations/20261128238000_decision_inbox_hygiene_selftest.sql"
           ],
           "guards": []
         },

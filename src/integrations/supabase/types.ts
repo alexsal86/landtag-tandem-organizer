@@ -19394,6 +19394,11 @@ export type Database = {
       decision_delivery_preference_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_digest_items_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_deadline_reminder_selftest: { Args: { p_tenant: string }; Returns: Json }
+      decision_inbox_hygiene_selftest: { Args: { p_tenant: string }; Returns: Json }
+      mark_decision_request_notifications_read: {
+        Args: { _decision_id: string }
+        Returns: number
+      }
       decision_quiet_hours_active: {
         Args: { _user_id: string; _tenant_id: string; _type_name: string; _at?: string }
         Returns: boolean

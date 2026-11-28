@@ -8,11 +8,12 @@ Dieser Bericht trennt **eindeutig nachweisbare Inkonsistenzen** von **heuristisc
 
 Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie werden hier nicht dupliziert. Dieser Bericht listet die verbleibenden Review-Hinweise und Prüfkandidaten.
 
-- Review-Hinweise: **2**
-- Nicht zugeordnete Objekte: **3**, davon ohne Ausnahme: **2**
+- Review-Hinweise: **3**
+- Nicht zugeordnete Objekte: **4**, davon ohne Ausnahme: **3**
 
 ### Review-Hinweise
 
+- Prüfkandidat ohne Funktionszuordnung (rpc): expire_decision_notifications
 - Prüfkandidat ohne Funktionszuordnung (rpc): insert_sample_contacts
 - Prüfkandidat ohne Funktionszuordnung (rpc): storage_folder_uuid
 
@@ -299,7 +300,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (125)
+## Funktionen mit Einschränkungen oder offenen Punkten (126)
 
 ### `mywork.dashboard`
 
@@ -488,6 +489,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `decisions.notification-digest`
 
 - Nicht geprüft: echter Cron-Lauf, tatsächlicher Push-Versand, parallele Flush-Läufe und eine Oberfläche für die Mandanteneinstellung. Die Einstellung ist derzeit nur über set_decision_notification_timing erreichbar. Der Ersteller erhält kein Ergebnis-Digest; Frist und Rückzug werden bewusst nicht gebündelt.
+
+### `decisions.inbox-hygiene`
+
+- Nicht geprüft: Browserdarstellung, Push-Versand und das Öffnen über andere Wege als die Detailansicht.
 
 ### `decisions.deadline-reminders`
 
@@ -895,10 +900,11 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 - Keine.
 
-### Datenbankfunktionen ohne Zuordnung (2)
+### Datenbankfunktionen ohne Zuordnung (3)
 
 Diese Liste ist heuristisch gefiltert (technische Präfixe gelten als Hilfsfunktionen). Sie ist ein Prüfauftrag, keine automatische Aussage über Verwaistheit.
 
+- `expire_decision_notifications` (supabase/migrations/20261128237000_decision_inbox_hygiene.sql)
 - `insert_sample_contacts` (supabase/migrations/20250725220743-5efa0a86-327e-45df-a74c-0bf535959ecc.sql)
 - `storage_folder_uuid` (src/integrations/supabase/types.ts)
 

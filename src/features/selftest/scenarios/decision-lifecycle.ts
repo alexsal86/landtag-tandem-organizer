@@ -511,6 +511,21 @@ export const decisionLifecycleScenario: TestScenario = {
       },
     },
     {
+      id: "inbox-hygiene", label: "Anfrage-Meldungen beim Öffnen lesen und beim Archivieren verfallen lassen", kind: "workflow",
+      run: async (ctx) => {
+        const { data, error } = await supabase.rpc("decision_inbox_hygiene_selftest", { p_tenant: ctx.tenantId });
+        if (error) return { ok: false, message: describeError(error) };
+        const report = data as { ok?: boolean; message?: string; skipped?: string; checks?: Record<string, unknown> } | null;
+        return {
+          ok: report?.ok === true,
+          message: report?.ok === true
+            ? "Öffnen markiert die Anfrage als gelesen; Archivieren lässt offene Meldungen verfallen, die Rückzugsmeldung bleibt ungelesen."
+            : (report?.skipped ?? report?.message ?? "Inbox-Hygiene-Selbsttest fehlgeschlagen."),
+          details: report?.checks,
+        };
+      },
+    },
+    {
       id: "notification-metrics", label: "Zustellungen, Abschaltquote, Antwortzeit, Anstupser und Trigger-Fehler messen", kind: "workflow",
       run: async (ctx) => {
         const { data, error } = await supabase.rpc("decision_notification_metrics_selftest", { p_tenant: ctx.tenantId });

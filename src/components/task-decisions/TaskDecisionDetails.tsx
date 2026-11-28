@@ -65,6 +65,11 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
   }, [decisionId, isOpen]);
 
   useEffect(() => {
+    if (!decisionId || !isOpen) return;
+    void supabase.rpc('mark_decision_request_notifications_read', { _decision_id: decisionId });
+  }, [decisionId, isOpen]);
+
+  useEffect(() => {
     if (!isOpen) return;
     setActiveHighlightCommentId(highlightCommentId);
     setActiveHighlightResponseId(highlightResponseId);
@@ -457,16 +462,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
       onArchived?.();
       onClose();
 
-      // Best-effort: Notifications als gelesen markieren
-      try {
-        await supabase
-          .from('notifications')
-          .update({ is_read: true })
-          .eq('user_id', currentUserId)
-          .eq('navigation_context', 'decisions');
-      } catch (e) {
-        debugConsole.warn('Notifications update failed:', e);
-      }
+      // Die Datenbank lässt offene Meldungen dieser Entscheidung beim Archivieren verfallen.
     } catch (error) {
       debugConsole.error('Error archiving decision:', error);
       notify.error("Fehler", {
