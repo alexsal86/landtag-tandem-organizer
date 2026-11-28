@@ -471,7 +471,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `decisions.comments`
 
-- Geprüft sind Anlegen, Antwort, Reaktion samt Emoji-Allowlist, Entfernen und die Fünf-Minuten-Sperre gegen erneutes Melden desselben Emojis. Das Ablaufen der Sperrzeit, das Bearbeiten eigener Kommentare und die Sichtbarkeitsgrenze für Nicht-Beteiligte haben keinen Schritt.
+- Geprüft sind Anlegen, Antwort, Reaktion samt Emoji-Allowlist, Entfernen, die Fünf-Minuten-Sperre samt Ablauf und der Ausschluss von Nicht-Mitgliedern. Das Bearbeiten eigener Kommentare und die Sichtbarkeitsgrenze für Nicht-Beteiligte haben keinen Schritt.
 
 ### `decisions.attachments`
 

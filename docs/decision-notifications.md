@@ -27,6 +27,13 @@ Alle Trigger sind `SECURITY DEFINER` mit `SET search_path = pg_catalog, public` 
 prüfen die aktive Mitgliedschaft der Empfängerin bzw. des Empfängers im Mandanten der
 Entscheidung. Wer nicht Mitglied ist, erhält keine Meldung.
 
+Der Meldungsteil ist von der Fachaktion entkoppelt: Die vier Trigger-Funktionen führen
+ihre Arbeit in einem inneren Block mit `EXCEPTION WHEN OTHERS` aus. Ein Fehler beim
+Auflösen oder Zustellen wird als `WARNING` mit Trigger-Name und Fehlertext protokolliert,
+der Trigger liefert `NEW` zurück, und Kommentar, Reaktion, Antwort oder Teilnehmer-Insert
+bleiben bestehen. Damit blockiert eine Meldungsstörung nicht mehr das Abstimmen oder
+Diskutieren; sie ist im Postgres-Log sichtbar, nicht in der Oberfläche.
+
 ## Anstupsen aus dem Dashboard
 
 `nudge_dashboard_decision` ruft `create_notification` bereits mit sieben Argumenten
@@ -60,10 +67,18 @@ zählt die zugestellten Meldungen im Mandanten. Am Ende rollt ein `RAISE` die ge
 Strecke zurück. Ohne zweite aktive Person im Büro meldet der Schritt ausdrücklich
 „übersprungen“ statt zu bestehen.
 
-Der Selbsttest entfernt und setzt dasselbe Emoji erneut und verlangt, dass die Zahl der
-Reaktionsmeldungen unverändert bleibt; zusätzlich prüft er, dass die Meldung
-`comment_id` und `emoji` trägt. Das Ablaufen der fünf Minuten wird nicht abgewartet —
-der Test deckt die Sperre, nicht den Zeitablauf ab.
+Der Selbsttest deckt beide Seiten der Reaktions-Sperre ab: Er datiert die vorhandene
+Meldung künstlich auf sechs Minuten zurück und reagiert erneut — dann muss genau eine
+weitere Meldung entstehen (`reaction_window_expired`). Erst danach entfernt und setzt er
+das Emoji innerhalb der Sperre erneut; die Zahl bleibt jetzt unverändert
+(`reaction_window_blocked`). Zusätzlich prüft er, dass die Meldung `comment_id` und
+`emoji` trägt.
+
+Für Nicht-Mitglieder sucht der Test eine aktive Person, die kein Mitglied des
+Entscheidungs-Mandanten ist, trägt sie als Teilnehmer ein und lässt sie in der
+Kandidatenliste des Reaktionstriggers stehen. Anfrage- und Reaktionsmeldung dürfen für
+sie nicht entstehen (`nonmember_notified`). Gibt es keine solche Person, meldet das
+Ergebnis `nonmember_testable: false`, statt den Test künstlich zu bestehen.
 
 Der Selbsttest-Schritt `notifications` im Szenario `decision-lifecycle` ruft diese
 Funktion auf. Der statische Typ-Check `check:notification-types` stellt sicher, dass

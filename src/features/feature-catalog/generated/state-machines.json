@@ -5,7 +5,7 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 981,
+    "migrationCount": 982,
     "tsModules": [
       "src/components/letters/types.ts"
     ]

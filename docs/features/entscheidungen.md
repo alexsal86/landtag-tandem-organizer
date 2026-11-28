@@ -114,6 +114,7 @@ Erstellt eine Entscheidung mit Optionen, Frist, Teilnehmenden, Anhängen und Bez
 - src/pages/Decisions.tsx
 - src/features/selftest/scenarios/decision-lifecycle.ts
 - supabase/migrations/20261128210000_decision_notification_tenant.sql
+- supabase/migrations/20261128213000_decision_notification_trigger_safety.sql
 
 **Bekannte Einschränkungen**
 
@@ -231,7 +232,7 @@ Erlaubt die Änderung einer abgegebenen Antwort und hält die Antwort-Historie r
 - Die Änderungsmöglichkeit ist im Szenario nur als Folgepfad, nicht als eigener Prüfschritt abgedeckt.
 
 ### `decisions.comments` — Kommentare und Reaktionen
-Ermöglicht Kommentare zu Entscheidungen, Antworten auf Kommentare und Emoji-Reaktionen. Kommentar- und Reaktionsmeldungen entstehen per Trigger im Mandanten der Entscheidung; je Empfänger, Kommentar und Emoji höchstens eine Reaktionsmeldung in fünf Minuten.
+Ermöglicht Kommentare zu Entscheidungen, Antworten auf Kommentare und Emoji-Reaktionen. Kommentar- und Reaktionsmeldungen entstehen per Trigger im Mandanten der Entscheidung; je Empfänger, Kommentar und Emoji höchstens eine Reaktionsmeldung in fünf Minuten, und Meldungsfehler rollen den Kommentar nicht zurück.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -258,10 +259,11 @@ Ermöglicht Kommentare zu Entscheidungen, Antworten auf Kommentare und Emoji-Rea
 - src/hooks/useDecisionComments.ts
 - src/components/shared/DecisionResponseSummary.tsx
 - supabase/migrations/20261128210000_decision_notification_tenant.sql
+- supabase/migrations/20261128213000_decision_notification_trigger_safety.sql
 
 **Bekannte Einschränkungen**
 
-- Geprüft sind Anlegen, Antwort, Reaktion samt Emoji-Allowlist, Entfernen und die Fünf-Minuten-Sperre gegen erneutes Melden desselben Emojis. Das Ablaufen der Sperrzeit, das Bearbeiten eigener Kommentare und die Sichtbarkeitsgrenze für Nicht-Beteiligte haben keinen Schritt.
+- Geprüft sind Anlegen, Antwort, Reaktion samt Emoji-Allowlist, Entfernen, die Fünf-Minuten-Sperre samt Ablauf und der Ausschluss von Nicht-Mitgliedern. Das Bearbeiten eigener Kommentare und die Sichtbarkeitsgrenze für Nicht-Beteiligte haben keinen Schritt.
 
 **Offene Prüfpunkte**
 
