@@ -1,5 +1,5 @@
 import "./appNavigation/sidebar.css";
-import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { ChevronRight, Compass, MoreHorizontal, Plus, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -42,12 +42,14 @@ export function AppNavigation({
   const { pages, addPage, removePage } = useQuickAccessPages();
   const { recentPages } = useRecentlyVisited();
   const [showRecent] = useUserPreference(SHOW_RECENT_PREF_KEY, false);
+  const [collapsedSections, setCollapsedSections] = useUserPreference<Partial<Record<"parliament" | "office", boolean>>>(
+    "sidebar_collapsed_sections_v1", {},
+  );
   const [pickerOpen, setPickerOpen] = useState(false);
   const [category, setCategory] = useState<QuickAccessAddCategory | null>(null);
   const [context, setContext] = useState<string | null>(null);
   const afterContextClose = useRef<(() => void) | null>(null);
   const [railResearchOpen, setRailResearchOpen] = useState(false);
-  const researchId = useId();
   const actions = useGlobalCreateActions();
   const navigateTo = useSidebarNavigation();
   const sections = navigationSections.map(section => ({
@@ -210,6 +212,21 @@ export function AppNavigation({
     </section>
   );
 
+  const renderCollapsibleSection = (section: (typeof sections)[number], open: boolean, onOpenChange: (open: boolean) => void, active = false) => (
+    <Collapsible open={open} onOpenChange={onOpenChange}>
+      <h2>
+        <CollapsibleTrigger className="mission-section-heading mission-section-toggle"
+          data-active={!open && active || undefined}
+          aria-description={!open && active ? "Enthält den aktuell geöffneten Bereich" : undefined}>
+          {section.label} <ChevronRight aria-hidden="true" className="size-4" />
+        </CollapsibleTrigger>
+      </h2>
+      <CollapsibleContent className="mission-section-content">
+        {section.items.map(item => renderItem(item))}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+
   return (
     <TooltipProvider delayDuration={250} disableHoverableContent>
       <nav aria-label="Hauptnavigation" className={cn("mission-sidebar", compact && "mission-sidebar-compact", isMobile && "mission-sidebar-mobile")}>
@@ -228,7 +245,18 @@ export function AppNavigation({
               else addPage(page);
             }} />
           <div className="mission-divider">{!compact && <span>Workspace</span>}</div>
-          {sections.filter(section => section.id === "parliament" || section.id === "office").map(renderSection)}
+          {sections.map(section => {
+            const { id } = section;
+            if (id !== "parliament" && id !== "office") return null;
+            if (compact) return renderSection(section);
+            return (
+              <section key={id} aria-label={section.label}>
+                {renderCollapsibleSection(section, collapsedSections?.[id] !== true,
+                  open => setCollapsedSections(previous => ({ ...previous, [id]: !open })),
+                  section.items.some(item => item.id === activeSection))}
+              </section>
+            );
+          })}
           {compact ? (
             <Popover open={railResearchOpen} onOpenChange={setRailResearchOpen}>
               <PopoverTrigger className="mission-icon" aria-label="Recherche" title="Recherche" data-active={activeResearch}>
@@ -239,18 +267,7 @@ export function AppNavigation({
                 {research.items.map(item => renderItem(item, false))}
               </PopoverContent>
             </Popover>
-          ) : (
-            <Collapsible open={researchOpen} onOpenChange={setResearchOpen}>
-              <h2>
-                <CollapsibleTrigger className="mission-section-heading mission-research" aria-controls={researchId}>
-                  Recherche <ChevronRight aria-hidden="true" className="size-4" />
-                </CollapsibleTrigger>
-              </h2>
-              <CollapsibleContent id={researchId} className="mission-research-content">
-                {research.items.map(item => renderItem(item))}
-              </CollapsibleContent>
-            </Collapsible>
-          )}
+          ) : renderCollapsibleSection(research, researchOpen, setResearchOpen)}
         </div>
         <SidebarFooter compact={compact} ghost={ghost} profile={data.userProfile} hasAdminAccess={access.hasAdminAccess}
           isAdminPage={activeSection === "administration"} onAdmin={() => { closeAfterNavigation(); navigateTo(adminDestination); }}

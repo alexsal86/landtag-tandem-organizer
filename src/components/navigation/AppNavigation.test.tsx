@@ -73,6 +73,29 @@ describe("Sidebar", () => {
     expect(screen.getByRole("link", { name: "Karten" })).toHaveAttribute("aria-current", "page");
   });
 
+  it("remembers each workspace section and marks a closed section containing the active route", async () => {
+    const ui = renderSidebar(<AppNavigation activeSection="casefiles" />, "/casefiles");
+    const parliament = screen.getByRole("button", { name: "Parlament & Vorgänge" });
+    const office = screen.getByRole("button", { name: "Büro & Team" });
+    expect(parliament).toHaveAttribute("aria-expanded", "true");
+    expect(office).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(parliament);
+    expect(parliament).toHaveAttribute("data-active", "true");
+    expect(office).toHaveAttribute("aria-expanded", "true");
+    await vi.waitFor(() => expect(screen.queryByRole("link", { name: "Fallakten" })).not.toBeInTheDocument());
+    ui.unmount();
+
+    const mobile = renderSidebar(<AppNavigation activeSection="tasks" isMobile />, "/tasks");
+    expect(screen.getByRole("button", { name: "Parlament & Vorgänge" })).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(screen.getByRole("button", { name: "Büro & Team" }));
+    expect(screen.getByRole("button", { name: "Büro & Team" })).toHaveAttribute("data-active", "true");
+    mobile.unmount();
+
+    renderSidebar(<AppNavigation activeSection="casefiles" compact />, "/casefiles");
+    expect(screen.getByRole("link", { name: "Fallakten" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: /^Aufgaben/ })).toBeVisible();
+  });
+
   it("takes team and administration visibility from the real role and admin access independently of the workspace view", () => {
     state.role = "mitarbeiter";
     state.admin = true;

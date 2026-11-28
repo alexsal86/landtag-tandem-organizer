@@ -174,14 +174,14 @@
 .mission-link[aria-current="page"]:hover { background: transparent; }
 
 .mission-icon, .mission-profile, .mission-ghost-launch, .mission-search, .mission-link,
-.mission-summary-link, .mission-logo, .mission-research {
+.mission-summary-link, .mission-logo, .mission-section-toggle {
   outline-offset: -2px;
   transition: background-color 150ms, color 150ms, border-color 150ms;
 }
 
 .mission-icon:focus-visible, .mission-profile:focus-visible, .mission-ghost-launch:focus-visible,
 .mission-search:focus-visible, .mission-link:focus-visible, .mission-summary-link:focus-visible,
-.mission-logo:focus-visible, .mission-research:focus-visible, .mission-preview-link:focus-visible {
+.mission-logo:focus-visible, .mission-section-toggle:focus-visible, .mission-preview-link:focus-visible {
   outline: 2px solid hsl(var(--sidebar-ring));
   outline-offset: -2px;
 }
@@ -253,13 +253,17 @@
   font-weight: 500;
 }
 .mission-divider::after { content: ""; flex: 1; height: 1px; background: var(--mission-border); }
-.mission-research { width: 100%; border-radius: 6px; }
-.mission-research:hover { background: var(--mission-hover); }
-.mission-research svg { transition: transform 150ms; color: var(--mission-icon); }
-.mission-research[data-state="open"] svg { transform: rotate(90deg); }
-.mission-research-content { overflow: hidden; }
-.mission-research-content[data-state="open"] { animation: mission-expand 150ms ease-out; }
-.mission-research-content[data-state="closed"] { animation: mission-collapse 150ms ease-in; }
+.mission-section-toggle { width: 100%; border-radius: 6px; }
+.mission-section-toggle:hover { background: var(--mission-hover); }
+.mission-section-toggle[data-active="true"] {
+  background: var(--mission-accent);
+  color: var(--mission-accent-fg);
+}
+.mission-section-toggle svg { transition: transform 150ms; color: var(--mission-icon); }
+.mission-section-toggle[data-state="open"] svg { transform: rotate(90deg); }
+.mission-section-content { overflow: hidden; }
+.mission-section-content[data-state="open"] { animation: mission-expand 150ms ease-out; }
+.mission-section-content[data-state="closed"] { animation: mission-collapse 150ms ease-in; }
 @keyframes mission-expand { from { height: 0; } to { height: var(--radix-collapsible-content-height); } }
 @keyframes mission-collapse { from { height: var(--radix-collapsible-content-height); } to { height: 0; } }
 
@@ -342,7 +346,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mission-shell, .mission-sidebar *, .mission-popover *, .mission-research-content { transition: none; animation: none; }
+  .mission-shell, .mission-sidebar *, .mission-popover *, .mission-section-content { transition: none; animation: none; }
 }
 
 @media (max-height: 380px) {
