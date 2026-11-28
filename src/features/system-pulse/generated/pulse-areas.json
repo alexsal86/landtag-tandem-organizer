@@ -1392,6 +1392,10 @@
               "label": "Einladungsversand wird serverseitig eingestellt und übernommen"
             },
             {
+              "id": "lifecycle-notifications",
+              "label": "Frist, Rückzug, Ergebnis und direkte Antwort melden"
+            },
+            {
               "id": "set-open",
               "label": "Status auf 'open'"
             },

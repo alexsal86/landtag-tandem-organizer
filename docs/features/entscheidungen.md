@@ -70,6 +70,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `comments-and-reactions` | Kommentar, Antwort und Emoji-Reaktion speichern und entfernen | workflow | — |
 | `decision-lifecycle` | `notifications` | Meldungen entstehen im Mandanten der Entscheidung | workflow | — |
 | `decision-lifecycle` | `invitation-dispatch` | Einladungsversand wird serverseitig eingestellt und übernommen | workflow | — |
+| `decision-lifecycle` | `lifecycle-notifications` | Frist, Rückzug, Ergebnis und direkte Antwort melden | workflow | — |
 | `decision-lifecycle` | `set-open` | Status auf 'open' | db | — |
 | `decision-lifecycle` | `archive` | Archivieren | db | — |
 | `decision-lifecycle` | `verify` | Verifikation | db | — |
@@ -131,14 +132,14 @@ Erstellt eine Entscheidung mit Optionen, Frist, Teilnehmenden, Anhängen und Bez
 - **Services:** —
 - **Hooks:** `src/hooks/useMyWorkDecisionsData.ts`, `src/hooks/useDefaultDecisionSettings.ts`
 - **Edge Functions:** `send-decision-email`, `dispatch-decision-invitations`
-- **Datenbankfunktionen:** `create_work_decision`, `decision_notification_selftest`, `decision_invitation_dispatch_selftest`, `request_decision_email_invites`, `enqueue_decision_invitation_dispatch`, `claim_decision_invitation_dispatches`, `finish_decision_invitation_dispatch`
+- **Datenbankfunktionen:** `create_work_decision`, `decision_notification_selftest`, `decision_invitation_dispatch_selftest`, `decision_lifecycle_notification_selftest`, `request_decision_email_invites`, `enqueue_decision_invitation_dispatch`, `claim_decision_invitation_dispatches`, `finish_decision_invitation_dispatch`
 - **Tabellen:** `task_decisions`, `task_decision_participants`, `task_decision_topics`, `task_decision_attachments`, `decision_invitation_dispatches`
 - **Abhängigkeiten:** —
 - **Selbsttests:** `decision-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
-- **Dokumentation:** `docs/my-work-decisions-button-flowchart.md`, `docs/decision-notifications.md`, `docs/decision-invitation-dispatch.md`
+- **Dokumentation:** `docs/my-work-decisions-button-flowchart.md`, `docs/decision-notifications.md`, `docs/decision-invitation-dispatch.md`, `docs/decision-lifecycle-notifications.md`
 
 **Nachweise im Quellcode**
 
@@ -147,6 +148,8 @@ Erstellt eine Entscheidung mit Optionen, Frist, Teilnehmenden, Anhängen und Bez
 - supabase/migrations/20261128210000_decision_notification_tenant.sql
 - supabase/migrations/20261128213000_decision_notification_trigger_safety.sql
 - supabase/migrations/20261128215000_decision_invitation_dispatch.sql
+- supabase/migrations/20261128217000_decision_lifecycle_notifications.sql
+- supabase/migrations/20261128218000_decision_lifecycle_notification_selftest.sql
 
 **Bekannte Einschränkungen**
 
@@ -301,7 +304,7 @@ Erlaubt die Änderung einer abgegebenen Antwort und hält die Antwort-Historie r
 - Die Änderungsmöglichkeit ist im Szenario nur als Folgepfad, nicht als eigener Prüfschritt abgedeckt.
 
 ### `decisions.comments` — Kommentare und Reaktionen
-Ermöglicht Kommentare zu Entscheidungen, Antworten auf Kommentare und Emoji-Reaktionen. Kommentar- und Reaktionsmeldungen entstehen per Trigger im Mandanten der Entscheidung; je Empfänger, Kommentar und Emoji höchstens eine Reaktionsmeldung in fünf Minuten, und Meldungsfehler rollen den Kommentar nicht zurück.
+Ermöglicht Kommentare zu Entscheidungen, Antworten auf Kommentare und Emoji-Reaktionen. Kommentar- und Reaktionsmeldungen entstehen per Trigger im Mandanten der Entscheidung; eine direkte Antwort meldet sich gezielt beim Elternautor statt als allgemeine Kommentarmeldung. Je Empfänger, Kommentar und Emoji höchstens eine Reaktionsmeldung in fünf Minuten, und Meldungsfehler rollen den Kommentar nicht zurück.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert
@@ -329,6 +332,7 @@ Ermöglicht Kommentare zu Entscheidungen, Antworten auf Kommentare und Emoji-Rea
 - src/components/shared/DecisionResponseSummary.tsx
 - supabase/migrations/20261128210000_decision_notification_tenant.sql
 - supabase/migrations/20261128213000_decision_notification_trigger_safety.sql
+- supabase/migrations/20261128217000_decision_lifecycle_notifications.sql
 
 **Bekannte Einschränkungen**
 

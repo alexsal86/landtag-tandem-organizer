@@ -19245,6 +19245,7 @@ export type Database = {
         Returns: Json
       }
       decision_invitation_dispatch_selftest: { Args: { p_tenant: string }; Returns: Json }
+      decision_lifecycle_notification_selftest: { Args: { p_tenant: string }; Returns: Json }
       request_decision_email_invites: { Args: { _decision_id: string }; Returns: boolean }
       decision_notification_selftest: { Args: { p_tenant: string }; Returns: Json }
       decide_appointment_request: {

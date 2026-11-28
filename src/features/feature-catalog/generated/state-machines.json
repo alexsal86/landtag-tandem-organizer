@@ -5,7 +5,7 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 986,
+    "migrationCount": 988,
     "tsModules": [
       "src/components/letters/types.ts"
     ]
@@ -5262,7 +5262,8 @@
             "insert:supabase/migrations/20261110170000_routine_deputies_relative_deadlines.sql",
             "insert:supabase/migrations/20261113150000_employee_hr_lifecycle.sql",
             "write:supabase/migrations/20260209100456_1f1d79dc-a773-4379-82bd-99a16d806d49.sql",
-            "write:supabase/migrations/20261128210000_decision_notification_tenant.sql"
+            "write:supabase/migrations/20261128210000_decision_notification_tenant.sql",
+            "guard:supabase/migrations/20261128217000_decision_lifecycle_notifications.sql"
           ]
         },
         {
@@ -5271,7 +5272,9 @@
             "check:supabase/migrations/20260209094422_7cce038b-0e7e-4f45-931d-19b0fc237929.sql",
             "write:supabase/migrations/20251008092243_13bc77ce-3770-4a50-b88c-2444fb69206c.sql",
             "write:supabase/migrations/20260209100456_1f1d79dc-a773-4379-82bd-99a16d806d49.sql",
-            "write:supabase/migrations/20261128210000_decision_notification_tenant.sql"
+            "write:supabase/migrations/20261128210000_decision_notification_tenant.sql",
+            "write:supabase/migrations/20261128218000_decision_lifecycle_notification_selftest.sql",
+            "guard:supabase/migrations/20261128217000_decision_lifecycle_notifications.sql"
           ]
         },
         {
@@ -5283,7 +5286,8 @@
             "insert:supabase/migrations/20261128215000_decision_invitation_dispatch.sql",
             "insert:supabase/migrations/20261128216000_decision_invitation_dispatch_hardening.sql",
             "write:supabase/migrations/20260209100456_1f1d79dc-a773-4379-82bd-99a16d806d49.sql",
-            "write:supabase/migrations/20261128210000_decision_notification_tenant.sql"
+            "write:supabase/migrations/20261128210000_decision_notification_tenant.sql",
+            "guard:supabase/migrations/20261128217000_decision_lifecycle_notifications.sql"
           ]
         }
       ],
@@ -5326,7 +5330,8 @@
           "kind": "write",
           "param": null,
           "sources": [
-            "supabase/migrations/20251008092243_13bc77ce-3770-4a50-b88c-2444fb69206c.sql"
+            "supabase/migrations/20251008092243_13bc77ce-3770-4a50-b88c-2444fb69206c.sql",
+            "supabase/migrations/20261128218000_decision_lifecycle_notification_selftest.sql"
           ],
           "guards": []
         },
@@ -5344,7 +5349,66 @@
           "guards": []
         }
       ],
-      "guards": [],
+      "guards": [
+        {
+          "trigger": "trg_decision_lifecycle_notification",
+          "function": "notify_decision_lifecycle_changes",
+          "timing": "after",
+          "events": "update",
+          "source": "supabase/migrations/20261128217000_decision_lifecycle_notifications.sql",
+          "functionSource": "supabase/migrations/20261128217000_decision_lifecycle_notifications.sql",
+          "kind": "trigger",
+          "readsOld": true,
+          "readsNew": true,
+          "raises": false,
+          "message": null,
+          "checks": [
+            {
+              "side": "OLD",
+              "operator": "in",
+              "negated": false,
+              "values": [
+                "active",
+                "open"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "in",
+              "negated": false,
+              "values": [
+                "active",
+                "open"
+              ]
+            },
+            {
+              "side": "NEW",
+              "operator": "=",
+              "negated": false,
+              "values": [
+                "archived"
+              ]
+            }
+          ],
+          "states": [
+            "active",
+            "archived",
+            "open"
+          ],
+          "blockedTo": [],
+          "blockedFrom": [],
+          "allowedTo": [
+            "active",
+            "archived",
+            "open"
+          ],
+          "allowedFrom": [
+            "active",
+            "archived",
+            "open"
+          ]
+        }
+      ],
       "reconciliation": {
         "source": null,
         "label": null,
@@ -5367,7 +5431,7 @@
         ]
       },
       "limitations": [
-        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Nur beobachtende oder synchronisierende Trigger, keine Guard-Funktion mit RAISE EXCEPTION.",
         "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
       ],
       "findings": [

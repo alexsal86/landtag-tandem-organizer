@@ -433,6 +433,21 @@ export const decisionLifecycleScenario: TestScenario = {
       },
     },
     {
+      id: "lifecycle-notifications", label: "Frist, Rückzug, Ergebnis und direkte Antwort melden", kind: "workflow",
+      run: async (ctx) => {
+        const { data, error } = await supabase.rpc("decision_lifecycle_notification_selftest", { p_tenant: ctx.tenantId });
+        if (error) return { ok: false, message: describeError(error) };
+        const report = data as { ok?: boolean; message?: string; skipped?: string; checks?: Record<string, unknown> } | null;
+        return {
+          ok: report?.ok === true,
+          message: report?.ok === true
+            ? "Friständerung, früher Rückzug, Ergebnis an Teilnehmende, gezielte Antwort und visible_to_all-Anfrage wurden zugestellt."
+            : (report?.skipped ?? report?.message ?? "Lebenszyklus-Selbsttest fehlgeschlagen."),
+          details: report?.checks,
+        };
+      },
+    },
+    {
       id: "set-open",
       label: "Status auf 'open'",
       run: async (ctx) => {

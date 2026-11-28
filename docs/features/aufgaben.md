@@ -93,6 +93,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `comments-and-reactions` | Kommentar, Antwort und Emoji-Reaktion speichern und entfernen | workflow | — |
 | `decision-lifecycle` | `notifications` | Meldungen entstehen im Mandanten der Entscheidung | workflow | — |
 | `decision-lifecycle` | `invitation-dispatch` | Einladungsversand wird serverseitig eingestellt und übernommen | workflow | — |
+| `decision-lifecycle` | `lifecycle-notifications` | Frist, Rückzug, Ergebnis und direkte Antwort melden | workflow | — |
 | `decision-lifecycle` | `set-open` | Status auf 'open' | db | — |
 | `decision-lifecycle` | `archive` | Archivieren | db | — |
 | `decision-lifecycle` | `verify` | Verifikation | db | — |
