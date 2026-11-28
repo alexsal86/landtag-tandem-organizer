@@ -139,7 +139,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
             .from('contacts')
             .select(CONTACT_COLUMNS)
             .eq('tenant_id', currentTenant.id)
-            .neq('contact_type', 'archive')
+            .is('archived_at', null)
             .eq('is_favorite', true)
             .order('name')
             .limit(10),
@@ -162,7 +162,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
             .from('contacts')
             .select(CONTACT_COLUMNS)
             .in('id', missingIds)
-            .neq('contact_type', 'archive');
+            .is('archived_at', null);
           topContacts = data || [];
         }
 
@@ -174,7 +174,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
             .from('contacts')
             .select(CONTACT_COLUMNS)
             .eq('tenant_id', currentTenant.id)
-            .neq('contact_type', 'archive')
+            .is('archived_at', null)
             .order('name')
             .limit(20 - loadedIds.length);
           alphaContacts = (data || []).filter((c: Record<string, any>) => !loadedIds.includes(c.id));
@@ -209,7 +209,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
           .from('contacts')
           .select(CONTACT_COLUMNS)
           .eq('tenant_id', currentTenant.id)
-          .neq('contact_type', 'archive')
+          .is('archived_at', null)
           .or(`name.ilike.${pattern},organization.ilike.${pattern},email.ilike.${pattern}`)
           .order('is_favorite', { ascending: false })
           .order('name')

@@ -3349,6 +3349,9 @@ export type Database = {
       contacts: {
         Row: {
           address: string | null
+          archive_reason: string | null
+          archived_at: string | null
+          archived_by: string | null
           avatar_url: string | null
           birthday: string | null
           business_city: string | null
@@ -3395,6 +3398,9 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           avatar_url?: string | null
           birthday?: string | null
           business_city?: string | null
@@ -3441,6 +3447,9 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           avatar_url?: string | null
           birthday?: string | null
           business_city?: string | null
@@ -18590,6 +18599,19 @@ export type Database = {
         Args: { _action: string; _task_ids: string[]; _tenant_id: string }
         Returns: Json
       }
+      archive_contact: {
+        Args: {
+          p_contact_id: string
+          p_reason?: string | null
+        }
+        Returns: Json
+      }
+      unarchive_contact: {
+        Args: {
+          p_contact_id: string
+        }
+        Returns: Json
+      }
       bulk_update_contact_fields: {
         Args: {
           _ids: string[]
@@ -20492,6 +20514,9 @@ export type Database = {
         Args: { _ids?: string[]; _tenant_id?: string }
         Returns: {
           address: string | null
+          archive_reason: string | null
+          archived_at: string | null
+          archived_by: string | null
           avatar_url: string | null
           birthday: string | null
           business_city: string | null

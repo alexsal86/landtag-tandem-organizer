@@ -328,7 +328,7 @@ export function useTaskOperations({
     if (callLog.contact_id) {
       await supabase.from("call_logs").update({ follow_up_completed: true, completion_notes: resultText || null }).eq("id", callLogId);
     } else {
-      await createArchiveContact(callLog, resultText);
+      await createCallFollowUpContact(callLog, resultText);
     }
 
     const { data: appointment } = await supabase.from("appointments").select("title").eq("call_log_id", callLogId).single();
@@ -337,44 +337,50 @@ export function useTaskOperations({
     }
   };
 
-  const createArchiveContact = async (callLog: CallLogRecord, resultText?: string): Promise<void> => {
-    if (!user) return;
+  // Anruf-Follow-ups unbekannter Nummern sind Personen mit Herkunftskennzeichnung,
+  // keine archivierten Kontakte: sie bleiben in der Liste sichtbar und können dort
+  // vervollständigt werden. Das Archiv ist ein eigener Status (archived_at).
+  const createCallFollowUpContact = async (callLog: CallLogRecord, resultText?: string): Promise<void> => {
+    if (!user || !currentTenant?.id) return;
     const phone = callLog.caller_phone;
     const name = callLog.caller_name || `Unbekannter Anrufer (${phone ?? "ohne Nummer"})`;
 
-    let archiveContact: ContactRecord | null = null;
+    let followUpContact: { id: string; notes: string | null } | null = null;
     if (phone) {
       const { data } = await supabase
         .from("contacts")
         .select("id, notes")
         .eq("phone", phone)
-        .eq("contact_type", "archive")
-        .eq("user_id", user.id)
-        .single();
-      archiveContact = data;
+        .eq("contact_type", "person")
+        .eq("source_origin", "call_followup")
+        .eq("tenant_id", currentTenant.id)
+        .is("archived_at", null)
+        .maybeSingle();
+      followUpContact = data;
     }
 
-    if (archiveContact) {
-      const newNotes = (archiveContact.notes || "") +
+    if (followUpContact) {
+      const newNotes = (followUpContact.notes || "") +
         `\n\n--- Follow-Up vom ${new Date().toLocaleDateString("de-DE")} ---\n` +
         `Ursprünglicher Anruf: ${new Date(callLog.call_date).toLocaleString("de-DE")}\n` +
         `Anruftyp: ${callLog.call_type === "incoming" ? "Eingehend" : "Ausgehend"}\n` +
         `Priorität: ${callLog.priority}\n` +
         `Ursprüngliche Notizen: ${callLog.notes || "Keine"}\n` +
         `Follow-Up Ergebnis: ${resultText || "Keine Notizen"}`;
-      await supabase.from("contacts").update({ notes: newNotes, last_contact: "heute", updated_at: new Date().toISOString() }).eq("id", archiveContact.id);
+      await supabase.from("contacts").update({ notes: newNotes, updated_at: new Date().toISOString() }).eq("id", followUpContact.id);
     } else {
       await supabase.from("contacts").insert([{
         user_id: user.id,
         name,
         phone,
-        contact_type: "archive",
+        contact_type: "person",
+        source_origin: "call_followup",
         category: "citizen",
         priority: "low",
-        last_contact: "heute",
+        last_contact: new Date().toISOString().slice(0, 10),
         notes: `=== CALL FOLLOW-UP ARCHIV ===\nUrsprünglicher Anruf: ${new Date(callLog.call_date).toLocaleString("de-DE")}\nAnruftyp: ${callLog.call_type === "incoming" ? "Eingehend" : "Ausgehend"}\nPriorität: ${callLog.priority}\nUrsprüngliche Notizen: ${callLog.notes || "Keine"}\nFollow-Up Ergebnis: ${resultText || "Keine Notizen"}\n\nDieser Kontakt wurde automatisch aus Call Follow-Ups erstellt.`,
         additional_info: "Automatisch erstellt aus Call Follow-Up",
-        tenant_id: currentTenant?.id || "",
+        tenant_id: currentTenant.id,
       }]);
     }
 

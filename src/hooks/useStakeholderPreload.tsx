@@ -8,7 +8,7 @@ import { debugConsole } from "@/utils/debugConsole";
 interface Contact {
   id: string;
   name: string;
-  contact_type: "person" | "organization" | "archive";
+  contact_type: "person" | "organization";
   organization?: string | null;
   email?: string | null;
   tags?: string[] | null;

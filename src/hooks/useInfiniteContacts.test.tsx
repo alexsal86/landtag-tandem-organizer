@@ -13,7 +13,7 @@ vi.mock("@/features/topics/useEntityTopics", () => ({
 }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: { from: () => {
-    const query = { select: () => query, eq: () => query, neq: () => query, order: () => query, range };
+    const query = { select: () => query, eq: () => query, neq: () => query, is: () => query, not: () => query, order: () => query, range };
     return query;
   } },
 }));

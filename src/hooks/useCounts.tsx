@@ -26,7 +26,7 @@ async function fetchContactsCount(tenantId: string): Promise<number | null> {
     .select("id", { count: "planned", head: true })
     .eq("tenant_id", tenantId)
     .eq("contact_type", "person")
-    .neq("name", "Archivierter Kontakt");
+    .is("archived_at", null);
   if (error) {
     debugConsole.error("Error fetching contacts count fallback:", error);
     return null;

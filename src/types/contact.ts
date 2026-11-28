@@ -1,4 +1,4 @@
-export type ContactType = "person" | "organization" | "archive";
+export type ContactType = "person" | "organization";
 
 export type ContactCategory =
   | "citizen"
@@ -50,6 +50,11 @@ export interface ContactBase extends ContactCommunicationFields {
   business_postal_code?: string | null;
   business_city?: string | null;
   business_country?: string | null;
+  /** Gesetzt = archiviert: aus Listen/Auswahlfeldern ausgeblendet, aber lesbar. */
+  archived_at?: string | null;
+  archive_reason?: string | null;
+  /** Herkunft, u. a. call_followup für Anruf-Follow-ups unbekannter Nummern. */
+  source_origin?: string | null;
 }
 
 export interface PersonContact extends ContactBase {
@@ -60,14 +65,10 @@ export interface OrganizationContact extends ContactBase {
   contact_type: "organization";
 }
 
-export interface ArchivedContact extends ContactBase {
-  contact_type: "archive";
-}
-
-export type Contact = PersonContact | OrganizationContact | ArchivedContact;
+export type Contact = PersonContact | OrganizationContact;
 
 export type EditableContact = Omit<ContactBase, "contact_type"> & {
-  contact_type: Exclude<ContactType, "archive">;
+  contact_type: ContactType;
 };
 
 export type ContactDuplicateCandidate = Pick<

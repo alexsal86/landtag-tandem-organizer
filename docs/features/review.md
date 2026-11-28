@@ -107,7 +107,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `knowledge.collaboration` — Kollaborative Wissensbearbeitung
 - `knowledge.management` — Wissensverwaltung
 
-## Funktionen ohne Dokumentationsverweis (174)
+## Funktionen ohne Dokumentationsverweis (175)
 
 - `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -170,6 +170,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `chat.team-announcements` — Team-Ankündigungen
 - `contacts.edit` — Kontakt bearbeiten
 - `contacts.detail` — Kontaktprofil mit Aktivitäten
+- `contacts.archive` — Kontakte archivieren und wiederherstellen
 - `contacts.list-search` — Kontaktliste mit Suche und Filtern
 - `contacts.duplicates` — Dubletten finden
 - `contacts.distribution-lists` — Verteilerlisten verwalten
@@ -297,7 +298,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (113)
+## Funktionen mit Einschränkungen oder offenen Punkten (114)
 
 ### `mywork.dashboard`
 
@@ -502,6 +503,11 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `contacts.detail`
 
 - Gerendert wird das Detail-Sheet nicht; geprüft werden die gesicherte Kontaktlesung und die verknüpften Datenpfade (Aktivitäten, Briefingwissen, Förderungen).
+
+### `contacts.archive`
+
+- Der Selbsttest prüft Status, Listenausschluss, Zähler und Wiederherstellung; das Bestätigungsdialogfeld selbst wird nicht gerendert.
+- Archiv ist keine Löschung: DSGVO-Löschanfragen laufen unverändert über gdpr_requests.
 
 ### `contacts.list-search`
 

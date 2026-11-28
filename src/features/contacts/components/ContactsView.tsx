@@ -18,7 +18,6 @@ import { useContactsViewState } from "@/components/contacts/hooks/useContactsVie
 import { ContactGridCard } from "@/components/contacts/ContactGridCard";
 import { ContactListTable } from "@/components/contacts/ContactListTable";
 import { DistributionListsTab } from "@/components/contacts/DistributionListsTab";
-import { ArchiveTab } from "@/components/contacts/ArchiveTab";
 import { Card, CardContent } from "@/components/ui/card";
 
 export function ContactsView() {
@@ -85,7 +84,6 @@ export function ContactsView() {
         contactsCount={s.contactsCount}
         stakeholdersCount={s.stakeholdersCount}
         distributionListsCount={s.distributionListsCount}
-        archiveCount={s.archiveCount}
         navigate={(path) => { s.navigate(path); setMobilePanelOpen(false); }}
         setCreatingDistribution={(open) => { s.setCreatingDistribution(open); setMobilePanelOpen(false); }}
         setIsDuplicateSheetOpen={(open) => { setMobilePanelOpen(false); s.setIsDuplicateSheetOpen(open); }}
@@ -200,7 +198,13 @@ export function ContactsView() {
                     <Card className="bg-card shadow-card border-border"><CardContent className="text-center py-12">
                       <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                       <h3 className="text-lg font-semibold mb-2">Keine Kontakte gefunden</h3>
-                      <p className="text-muted-foreground mb-4">{s.searchTerm || s.selectedCategory !== "all" ? "Versuchen Sie es mit anderen Suchkriterien." : "Erstellen Sie Ihren ersten Kontakt."}</p>
+                      <p className="text-muted-foreground mb-4">
+                        {s.selectedCategory === "archived"
+                          ? "Kein Kontakt ist archiviert."
+                          : s.searchTerm || s.selectedCategory !== "all"
+                            ? "Versuchen Sie es mit anderen Suchkriterien."
+                            : "Erstellen Sie Ihren ersten Kontakt."}
+                      </p>
                       <Link to="/contacts/new"><Button className="gap-2"><Plus className="h-4 w-4" />Neuen Kontakt erstellen</Button></Link>
                     </CardContent></Card>
                   )}
@@ -220,8 +224,6 @@ export function ContactsView() {
             </div>
           ) : s.activeTab === "stakeholder-network" ? (
             <StakeholderNetworkPage />
-          ) : s.activeTab === "archive" ? (
-            <ArchiveTab contacts={s.contacts} />
           ) : (
             <DistributionListsTab
               distributionLists={s.distributionLists} distributionListsLoading={s.distributionListsLoading}
