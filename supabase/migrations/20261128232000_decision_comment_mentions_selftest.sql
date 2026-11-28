@@ -1,6 +1,10 @@
 INSERT INTO public.notification_navigation_mapping (notification_type_name, navigation_context)
-VALUES ('task_decision_mention', 'decisions')
-ON CONFLICT (notification_type_name, navigation_context) DO NOTHING;
+SELECT 'task_decision_mention', 'decisions'
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.notification_navigation_mapping
+  WHERE notification_type_name = 'task_decision_mention'
+    AND navigation_context = 'decisions'
+);
 
 CREATE OR REPLACE FUNCTION public.decision_mention_notification_selftest(p_tenant uuid)
 RETURNS jsonb
