@@ -3,7 +3,7 @@ import { useActionPermission } from "@/hooks/useActionPermission";
 import { MessageCircleQuestion } from "lucide-react";
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { keepPreviousData, useIsFetching, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { 
   CommandDialog, 
   CommandEmpty, 
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, Clock, TrendingUp, Filter } from "lucide-react";
+import { AlertCircle, Clock, Filter, RefreshCw, TrendingUp, X } from "lucide-react";
 import { 
   User, 
   Calendar, 
@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { buildOrIlikeFilter } from "./postgrestSearch";
+import { buildSearchHref } from "@/lib/appTargets";
 import { STALE_TIME } from "@/lib/query-cache";
 import { useTenant } from "@/hooks/useTenant";
 import { useAuth } from "@/hooks/useAuth";
@@ -66,16 +67,37 @@ const clearRecentSearches = () => {
   localStorage.removeItem(RECENT_SEARCHES_KEY);
 };
 
+type FilterScope = "all" | "contacts" | "appointments" | "tasks" | "documents";
+
+const FILTER_SCOPES: { value: FilterScope; label: string }[] = [
+  { value: "all", label: "Alle Bereiche" },
+  { value: "contacts", label: "Kontakte" },
+  { value: "appointments", label: "Termine" },
+  { value: "tasks", label: "Aufgaben" },
+  { value: "documents", label: "Dokumente" },
+];
+
+/** Alle Suchabfragen teilen sich diesen Schlüssel-Präfix. */
+const isGlobalSearchQueryKey = (queryKey: readonly unknown[]): boolean =>
+  typeof queryKey[0] === "string" && queryKey[0].startsWith("global-search-");
+
 export function GlobalSearchCommand() {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<{
+    dateFrom: string;
+    dateTo: string;
+    category: string;
+    status: string;
+    scope: FilterScope;
+  }>({
     dateFrom: "",
     dateTo: "",
     category: "",
-    status: ""
+    status: "",
+    scope: "all",
   });
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -83,6 +105,15 @@ export function GlobalSearchCommand() {
   const { currentTenant } = useTenant();
   const { user } = useAuth();
   const { allowed: canAskKnowledge } = useActionPermission("knowledge.write");
+  const queryClient = useQueryClient();
+  const fetchingSearchQueries = useIsFetching({
+    predicate: (query) => isGlobalSearchQueryKey(query.queryKey),
+  });
+  const retrySearch = useCallback(() => {
+    void queryClient.refetchQueries({
+      predicate: (query) => isGlobalSearchQueryKey(query.queryKey),
+    });
+  }, [queryClient]);
 
   // Debounce search query to avoid firing 12 queries on every keystroke
   useEffect(() => {
@@ -155,7 +186,7 @@ export function GlobalSearchCommand() {
     gcTime: STALE_TIME.LIST * 2,
     queryFn: async () => {
       if (!currentTenant?.id) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('search_analytics')
         .select('search_query, result_count')
         .eq('tenant_id', currentTenant.id)
@@ -163,7 +194,7 @@ export function GlobalSearchCommand() {
         .order('created_at', { ascending: false })
         .limit(100);
       
-      if (!data) return [];
+      if (error || !data) return [];
       
       // Count occurrences and sort by frequency
       const counts = data.reduce((acc, item) => {
@@ -180,10 +211,15 @@ export function GlobalSearchCommand() {
   });
 
   // Search queries with fuzzy search - all use debouncedQuery to prevent firing on every keystroke
-  const { data: contacts, isLoading: contactsLoading } = useQuery({
+  const {
+    data: contacts,
+    isLoading: contactsLoading,
+    error: contactsError,
+  } = useQuery({
     queryKey: ['global-search-contacts', debouncedQuery, currentTenant?.id, filters],
     staleTime: STALE_TIME.LIST,
     gcTime: STALE_TIME.LIST * 2,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
       let query = supabase
@@ -194,20 +230,28 @@ export function GlobalSearchCommand() {
       // Fuzzy search using pg_trgm similarity
       query = query.or(buildOrIlikeFilter(["name", "organization", "email", "phone", "mobile_phone", "position"], debouncedQuery));
       
-      if (filters.category) {
+      // Kategorien sind je Bereich unterschiedlich benannt; der Filter gilt nur im
+      // gewählten Bereich und nie für fremde Vokabulare.
+      if (filters.scope === "contacts" && filters.category) {
         query = query.eq('category', filters.category);
       }
-      
-      const { data } = await query.limit(10);
-      return data || [];
+
+      const { data, error } = await query.limit(10);
+      if (error) throw error;
+      return data ?? [];
     },
     enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
-  const { data: appointments, isLoading: appointmentsLoading } = useQuery({
+  const {
+    data: appointments,
+    isLoading: appointmentsLoading,
+    error: appointmentsError,
+  } = useQuery({
     queryKey: ['global-search-appointments', debouncedQuery, currentTenant?.id, filters],
     staleTime: STALE_TIME.LIST,
     gcTime: STALE_TIME.LIST * 2,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
       let query = supabase
@@ -220,25 +264,32 @@ export function GlobalSearchCommand() {
         query = query.gte('start_time', filters.dateFrom);
       }
       if (filters.dateTo) {
-        query = query.lte('start_time', filters.dateTo);
+        query = query.lte('start_time', `${filters.dateTo}T23:59:59`);
       }
-      if (filters.category) {
+      if (filters.scope === "appointments" && filters.category) {
         query = query.eq('category', filters.category);
       }
-      
-      const { data } = await query
-        .gte('start_time', new Date().toISOString())
-        .order('start_time', { ascending: true })
+
+      // Bewusst keine "ab jetzt"-Grenze: die globale Suche muss auch vergangene
+      // Termine finden. Der Zeitraum ergibt sich allein aus den Datumsfiltern.
+      const { data, error } = await query
+        .order('start_time', { ascending: false })
         .limit(10);
-      return data || [];
+      if (error) throw error;
+      return data ?? [];
     },
     enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
-  const { data: tasks, isLoading: tasksLoading } = useQuery({
+  const {
+    data: tasks,
+    isLoading: tasksLoading,
+    error: tasksError,
+  } = useQuery({
     queryKey: ['global-search-tasks', debouncedQuery, currentTenant?.id, filters],
     staleTime: STALE_TIME.LIST,
     gcTime: STALE_TIME.LIST * 2,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
       let query = supabase
@@ -247,7 +298,9 @@ export function GlobalSearchCommand() {
         .eq('tenant_id', currentTenant?.id ?? '')
         .or(buildOrIlikeFilter(["title", "description", "category", "status"], debouncedQuery));
       
-      if (filters.status && filters.status !== 'completed') {
+      // Ein ausdrücklich gesetzter Status (auch "completed") gilt immer; ohne
+      // Statusfilter bleiben abgeschlossene Aufgaben wie bisher außen vor.
+      if (filters.scope === "tasks" && filters.status) {
         query = query.eq('status', filters.status);
       } else if (!filters.status) {
         query = query.neq('status', 'completed');
@@ -260,18 +313,24 @@ export function GlobalSearchCommand() {
         query = query.lte('due_date', filters.dateTo);
       }
       
-      const { data } = await query
+      const { data, error } = await query
         .order('due_date', { ascending: true })
         .limit(10);
-      return data || [];
+      if (error) throw error;
+      return data ?? [];
     },
     enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
-  const { data: documents, isLoading: documentsLoading } = useQuery({
+  const {
+    data: documents,
+    isLoading: documentsLoading,
+    error: documentsError,
+  } = useQuery({
     queryKey: ['global-search-documents', debouncedQuery, currentTenant?.id, filters],
     staleTime: STALE_TIME.LIST,
     gcTime: STALE_TIME.LIST * 2,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
       let query = supabase
@@ -280,126 +339,163 @@ export function GlobalSearchCommand() {
         .eq('tenant_id', currentTenant?.id ?? '')
         .or(buildOrIlikeFilter(["title", "description", "file_name", "document_type", "file_type"], debouncedQuery));
       
-      if (filters.category) {
+      if (filters.scope === "documents" && filters.category) {
         query = query.eq('category', filters.category);
       }
-      if (filters.status) {
+      if (filters.scope === "documents" && filters.status) {
         query = query.eq('status', filters.status);
       }
-      
-      const { data } = await query
+
+      const { data, error } = await query
         .order('created_at', { ascending: false })
         .limit(10);
-      return data || [];
+      if (error) throw error;
+      return data ?? [];
     },
     enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
-  const { data: letters, isLoading: lettersLoading } = useQuery({
+  const {
+    data: letters,
+    isLoading: lettersLoading,
+    error: lettersError,
+  } = useQuery({
     queryKey: ['global-search-letters', debouncedQuery, currentTenant?.id],
     staleTime: STALE_TIME.LIST,
     gcTime: STALE_TIME.LIST * 2,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('letters')
         .select('id, title, recipient_name, letter_date, subject, subject_line, reference_number')
         .eq('tenant_id', currentTenant?.id ?? '')
         .or(buildOrIlikeFilter(["title", "recipient_name", "subject", "subject_line", "reference_number"], debouncedQuery))
         .order('letter_date', { ascending: false })
         .limit(10);
-      return data || [];
+      if (error) throw error;
+      return data ?? [];
     },
     enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
-  const { data: protocols, isLoading: protocolsLoading } = useQuery({
+  const {
+    data: protocols,
+    isLoading: protocolsLoading,
+    error: protocolsError,
+  } = useQuery({
     queryKey: ['global-search-protocols', debouncedQuery, currentTenant?.id],
     staleTime: STALE_TIME.LIST,
     gcTime: STALE_TIME.LIST * 2,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('meetings')
         .select('id, title, meeting_date, description, location')
         .eq('tenant_id', currentTenant?.id ?? '')
         .or(buildOrIlikeFilter(["title", "description", "location"], debouncedQuery))
         .order('meeting_date', { ascending: false })
         .limit(10);
-      return data || [];
+      if (error) throw error;
+      return data ?? [];
     },
     enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
-  const { data: caseFiles, isLoading: caseFilesLoading } = useQuery({
+  const {
+    data: caseFiles,
+    isLoading: caseFilesLoading,
+    error: caseFilesError,
+  } = useQuery({
     queryKey: ['global-search-casefiles', debouncedQuery, currentTenant?.id],
     staleTime: STALE_TIME.LIST,
     gcTime: STALE_TIME.LIST * 2,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('case_files')
         .select('id, title, reference_number, status, case_type, tags, current_status_note, processing_status, priority')
         .eq('tenant_id', currentTenant?.id ?? '')
         .or(buildOrIlikeFilter(["title", "description", "reference_number", "current_status_note", "case_type", "processing_status", "status", "priority"], debouncedQuery))
         .order('updated_at', { ascending: false })
         .limit(10);
-      return data || [];
+      if (error) throw error;
+      return data ?? [];
     },
     enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
   // Search archived tasks
-  const { data: archivedTasks, isLoading: archivedTasksLoading } = useQuery({
+  const {
+    data: archivedTasks,
+    isLoading: archivedTasksLoading,
+    error: archivedTasksError,
+  } = useQuery({
     queryKey: ['global-search-archived-tasks', debouncedQuery, currentTenant?.id],
     staleTime: STALE_TIME.LIST,
     gcTime: STALE_TIME.LIST * 2,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('archived_tasks')
         .select('id, title, description, completed_at, category, priority')
         .eq('user_id', user?.id ?? '')
         .or(buildOrIlikeFilter(["title", "description", "category", "priority"], debouncedQuery))
         .order('archived_at', { ascending: false })
         .limit(10);
-      return data || [];
+      if (error) throw error;
+      return data ?? [];
     },
     enabled: !!debouncedQuery && !!currentTenant?.id && !!user && debouncedQuery.length >= 2,
   });
 
-  const { data: decisions, isLoading: decisionsLoading } = useQuery({
+  const {
+    data: decisions,
+    isLoading: decisionsLoading,
+    error: decisionsError,
+  } = useQuery({
     queryKey: ['global-search-decisions', debouncedQuery, currentTenant?.id],
     staleTime: STALE_TIME.LIST,
     gcTime: STALE_TIME.LIST * 2,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('task_decisions')
         .select('id, title, description, status, priority, archived_at, updated_at')
         .eq('tenant_id', currentTenant!.id)
         .or(buildOrIlikeFilter(["title", "description", "status"], debouncedQuery))
         .order('updated_at', { ascending: false })
         .limit(10);
-      return data || [];
+      if (error) throw error;
+      return data ?? [];
     },
     enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
-  const { data: plannings, isLoading: planningsLoading } = useQuery({
+  const {
+    data: plannings,
+    isLoading: planningsLoading,
+    error: planningsError,
+  } = useQuery({
     queryKey: ['global-search-plannings', debouncedQuery, currentTenant?.id],
     staleTime: STALE_TIME.LIST,
     gcTime: STALE_TIME.LIST * 2,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!debouncedQuery || debouncedQuery.length < 2) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('event_plannings')
         .select('id, title, description, location, contact_person, is_archived, archived_at, updated_at')
         .eq('tenant_id', currentTenant!.id)
         .or(buildOrIlikeFilter(["title", "description", "location", "contact_person"], debouncedQuery))
         .order('updated_at', { ascending: false })
         .limit(10);
-      return data || [];
+      if (error) throw error;
+      return data ?? [];
     },
     enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
@@ -417,6 +513,21 @@ export function GlobalSearchCommand() {
   const isStillSearching = contactsLoading || appointmentsLoading || tasksLoading ||
     documentsLoading || lettersLoading || protocolsLoading || caseFilesLoading ||
     archivedTasksLoading || decisionsLoading || planningsLoading;
+
+  // Fehlgeschlagene Quellen werden sichtbar gemacht, statt als "keine Treffer"
+  // durchzugehen. Andere Bereiche zeigen ihre Ergebnisse weiterhin an.
+  const searchErrors = [
+    contactsError,
+    appointmentsError,
+    tasksError,
+    documentsError,
+    lettersError,
+    protocolsError,
+    caseFilesError,
+    archivedTasksError,
+    decisionsError,
+    planningsError,
+  ].filter((error): error is Error => Boolean(error));
 
   useEffect(() => {
     if (!debouncedQuery || debouncedQuery.length < 2 || isStillSearching) return;
@@ -448,7 +559,7 @@ export function GlobalSearchCommand() {
     }
     setOpen(false);
     setSearchQuery("");
-    setFilters({ dateFrom: "", dateTo: "", category: "", status: "" });
+    setFilters({ dateFrom: "", dateTo: "", category: "", status: "", scope: "all" });
     command();
   }, [searchQuery]);
 
@@ -457,10 +568,18 @@ export function GlobalSearchCommand() {
   };
 
   const clearFilters = () => {
-    setFilters({ dateFrom: "", dateTo: "", category: "", status: "" });
+    setFilters({ dateFrom: "", dateTo: "", category: "", status: "", scope: "all" });
   };
 
-  const activeFilterCount = Object.values(filters).filter(v => v).length;
+  const activeFilterCount =
+    [filters.dateFrom, filters.dateTo, filters.category, filters.status].filter(Boolean).length +
+    (filters.scope !== "all" ? 1 : 0);
+  const categoryFilterApplies =
+    filters.scope === "contacts" || filters.scope === "appointments" || filters.scope === "documents";
+  const statusFilterApplies = filters.scope === "tasks" || filters.scope === "documents";
+  const scopeShows = (scope: Exclude<FilterScope, "all">): boolean =>
+    filters.scope === "all" || filters.scope === scope;
+  const showsUnscopedTypes = filters.scope === "all";
 
   // Navigation items removed - redundant with sidebar
 
@@ -471,7 +590,8 @@ export function GlobalSearchCommand() {
                      activeDecisions.length + archivedDecisions.length +
                      activePlannings.length + archivedPlannings.length > 0;
 
-  const isSearching = searchQuery !== debouncedQuery || isStillSearching;
+  // Beim Nachladen bleiben die bisherigen Treffer stehen; nur der Hinweis zeigt Aktivität.
+  const isSearching = searchQuery !== debouncedQuery || fetchingSearchQueries > 0;
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
@@ -508,6 +628,19 @@ export function GlobalSearchCommand() {
             )}
           </div>
           <div className="grid grid-cols-2 gap-2">
+            <div className="col-span-2 space-y-1">
+              <label className="text-xs text-muted-foreground" htmlFor="global-search-scope">Bereich</label>
+              <select
+                id="global-search-scope"
+                value={filters.scope}
+                onChange={(e) => setFilters({ ...filters, scope: e.target.value as FilterScope })}
+                className="w-full rounded border bg-background px-2 py-1 text-sm"
+              >
+                {FILTER_SCOPES.map((scope) => (
+                  <option key={scope.value} value={scope.value}>{scope.label}</option>
+                ))}
+              </select>
+            </div>
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Von Datum</label>
               <input
@@ -532,8 +665,9 @@ export function GlobalSearchCommand() {
                 type="text"
                 value={filters.category}
                 onChange={(e) => setFilters({...filters, category: e.target.value})}
-                placeholder="z.B. Meeting"
-                className="w-full px-2 py-1 text-sm border rounded"
+                disabled={!categoryFilterApplies}
+                placeholder={categoryFilterApplies ? "z.B. Meeting" : "Bereich wählen"}
+                className="w-full px-2 py-1 text-sm border rounded disabled:opacity-50"
               />
             </div>
             <div className="space-y-1">
@@ -542,11 +676,15 @@ export function GlobalSearchCommand() {
                 type="text"
                 value={filters.status}
                 onChange={(e) => setFilters({...filters, status: e.target.value})}
-                placeholder="z.B. pending"
-                className="w-full px-2 py-1 text-sm border rounded"
+                disabled={!statusFilterApplies}
+                placeholder={statusFilterApplies ? "z.B. offen" : "Bereich wählen"}
+                className="w-full px-2 py-1 text-sm border rounded disabled:opacity-50"
               />
             </div>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Kategorie und Status gelten nur im gewählten Bereich, weil die Werte sich je Bereich unterscheiden.
+          </p>
         </div>
       )}
 
@@ -568,16 +706,38 @@ export function GlobalSearchCommand() {
             </CommandItem>
           </CommandGroup>
         )}
-        {isSearching && searchQuery ? (
-          <div className="py-6 text-center text-sm text-muted-foreground">
-            <div className="flex items-center justify-center gap-2">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              <span>Suche läuft...</span>
+        {searchErrors.length > 0 && (
+          <div className="border-b border-destructive/30 bg-destructive/5 px-3 py-3 text-sm" role="alert">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-destructive">
+                  Die Suche konnte nicht vollständig ausgeführt werden.
+                </p>
+                <p className="mt-1 text-muted-foreground">
+                  {searchErrors.length === 1
+                    ? "Eine Quelle lieferte einen Fehler"
+                    : `${searchErrors.length} Quellen lieferten einen Fehler`}. Ergebnisse der übrigen Bereiche werden weiterhin angezeigt.
+                </p>
+                <Button variant="outline" size="sm" className="mt-2" onClick={retrySearch}>
+                  <RefreshCw className="mr-1 h-3 w-3" aria-hidden="true" />
+                  Erneut versuchen
+                </Button>
+              </div>
             </div>
           </div>
-        ) : (
-          <CommandEmpty>Keine Ergebnisse gefunden.</CommandEmpty>
         )}
+        {isSearching && searchQuery && (
+          <div className="flex items-center gap-2 border-b px-3 py-2 text-xs text-muted-foreground" role="status" aria-live="polite">
+            <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" aria-hidden="true" />
+            <span>Suche läuft …</span>
+          </div>
+        )}
+        <CommandEmpty>
+          {searchErrors.length > 0
+            ? "Keine Ergebnisse in den verfügbaren Bereichen."
+            : "Keine Ergebnisse gefunden."}
+        </CommandEmpty>
 
         {!searchQuery && recentSearches.length > 0 && (
           <>
@@ -639,12 +799,12 @@ export function GlobalSearchCommand() {
         )}
 
 
-        {contacts && contacts.length > 0 && (
+        {scopeShows("contacts") && contacts && contacts.length > 0 && (
           <CommandGroup heading="👤 Kontakte">
             {contacts.map((contact) => (
               <CommandItem
                 key={contact.id}
-                onSelect={() => runCommand(() => navigate(`/?section=contacts&contact=${contact.id}&highlight=${contact.id}`))}
+                onSelect={() => runCommand(() => navigate(buildSearchHref("contact", contact)))}
               >
                 <User className="mr-2 h-4 w-4" />
                 <span>{contact.name}</span>
@@ -658,12 +818,12 @@ export function GlobalSearchCommand() {
           </CommandGroup>
         )}
 
-        {appointments && appointments.length > 0 && (
+        {scopeShows("appointments") && appointments && appointments.length > 0 && (
           <CommandGroup heading="📅 Termine">
             {appointments.map((appointment) => (
               <CommandItem
                 key={appointment.id}
-                onSelect={() => runCommand(() => navigate(`/?section=calendar&appointment=${appointment.id}&highlight=${appointment.id}`))}
+                onSelect={() => runCommand(() => navigate(buildSearchHref("appointment", appointment)))}
               >
                 <Calendar className="mr-2 h-4 w-4" />
                 <span>{appointment.title}</span>
@@ -675,12 +835,12 @@ export function GlobalSearchCommand() {
           </CommandGroup>
         )}
 
-        {tasks && tasks.length > 0 && (
+        {scopeShows("tasks") && tasks && tasks.length > 0 && (
           <CommandGroup heading="✅ Aufgaben">
             {tasks.map((task) => (
               <CommandItem
                 key={task.id}
-                onSelect={() => runCommand(() => navigate(`/?section=tasks&task=${task.id}&highlight=${task.id}`))}
+                onSelect={() => runCommand(() => navigate(buildSearchHref("task", task)))}
               >
                 <CheckSquare className="mr-2 h-4 w-4" />
                 <span>{task.title}</span>
@@ -694,12 +854,12 @@ export function GlobalSearchCommand() {
           </CommandGroup>
         )}
 
-        {documents && documents.length > 0 && (
+        {scopeShows("documents") && documents && documents.length > 0 && (
           <CommandGroup heading="📄 Dokumente">
             {documents.map((doc) => (
               <CommandItem
                 key={doc.id}
-                onSelect={() => runCommand(() => navigate(`/?section=documents&document=${doc.id}&highlight=${doc.id}`))}
+                onSelect={() => runCommand(() => navigate(buildSearchHref("document", doc)))}
               >
                 <FileText className="mr-2 h-4 w-4" />
                 <span>{doc.title}</span>
@@ -713,12 +873,12 @@ export function GlobalSearchCommand() {
           </CommandGroup>
         )}
 
-        {letters && letters.length > 0 && (
+        {showsUnscopedTypes && letters && letters.length > 0 && (
           <CommandGroup heading="✉️ Briefe">
             {letters.map((letter) => (
               <CommandItem
                 key={letter.id}
-                onSelect={() => runCommand(() => navigate(`/letters/${letter.id}?highlight=${letter.id}`))}
+                onSelect={() => runCommand(() => navigate(buildSearchHref("letter", letter)))}
               >
                 <Mail className="mr-2 h-4 w-4" />
                 <span>{letter.title}</span>
@@ -732,12 +892,12 @@ export function GlobalSearchCommand() {
           </CommandGroup>
         )}
 
-        {protocols && protocols.length > 0 && (
+        {showsUnscopedTypes && protocols && protocols.length > 0 && (
           <CommandGroup heading="📋 Protokolle">
             {protocols.map((protocol) => (
               <CommandItem
                 key={protocol.id}
-                onSelect={() => runCommand(() => navigate(`/?section=meetings&meeting=${protocol.id}&highlight=${protocol.id}`))}
+                onSelect={() => runCommand(() => navigate(buildSearchHref("protocol", protocol)))}
               >
                 <FileSignature className="mr-2 h-4 w-4" />
                 <span>{protocol.title}</span>
@@ -751,12 +911,12 @@ export function GlobalSearchCommand() {
           </CommandGroup>
         )}
 
-        {caseFiles && caseFiles.length > 0 && (
+        {showsUnscopedTypes && caseFiles && caseFiles.length > 0 && (
           <CommandGroup heading="📁 Fallakten">
             {caseFiles.map((caseFile) => (
               <CommandItem
                 key={caseFile.id}
-                onSelect={() => runCommand(() => navigate(`/?section=casefiles&casefile=${caseFile.id}&highlight=${caseFile.id}`))}
+                onSelect={() => runCommand(() => navigate(buildSearchHref("caseFile", caseFile)))}
               >
                 <Briefcase className="mr-2 h-4 w-4" />
                 <span>{caseFile.title}</span>
@@ -771,12 +931,12 @@ export function GlobalSearchCommand() {
         )}
 
 
-        {activeDecisions.length > 0 && (
+        {showsUnscopedTypes && activeDecisions.length > 0 && (
           <CommandGroup heading="🗳️ Entscheidungen">
             {activeDecisions.map((decision) => (
               <CommandItem
                 key={decision.id}
-                onSelect={() => runCommand(() => navigate(`/decisions?id=${decision.id}&highlight=${decision.id}`))}
+                onSelect={() => runCommand(() => navigate(buildSearchHref("decision", decision)))}
               >
                 <Vote className="mr-2 h-4 w-4" />
                 <span>{decision.title}</span>
@@ -788,12 +948,12 @@ export function GlobalSearchCommand() {
           </CommandGroup>
         )}
 
-        {archivedDecisions.length > 0 && (
+        {showsUnscopedTypes && archivedDecisions.length > 0 && (
           <CommandGroup heading="🗄️ Archivierte Entscheidungen">
             {archivedDecisions.map((decision) => (
               <CommandItem
                 key={decision.id}
-                onSelect={() => runCommand(() => navigate(`/decisions?id=${decision.id}&highlight=${decision.id}`))}
+                onSelect={() => runCommand(() => navigate(buildSearchHref("decision", decision)))}
               >
                 <Vote className="mr-2 h-4 w-4" />
                 <span>{decision.title}</span>
@@ -803,12 +963,12 @@ export function GlobalSearchCommand() {
           </CommandGroup>
         )}
 
-        {activePlannings.length > 0 && (
+        {showsUnscopedTypes && activePlannings.length > 0 && (
           <CommandGroup heading="📝 Planungen">
             {activePlannings.map((planning) => (
               <CommandItem
                 key={planning.id}
-                onSelect={() => runCommand(() => navigate(`/eventplanning/${planning.id}?highlight=${planning.id}`))}
+                onSelect={() => runCommand(() => navigate(buildSearchHref("planning", planning)))}
               >
                 <CalendarPlus className="mr-2 h-4 w-4" />
                 <span>{planning.title}</span>
@@ -820,12 +980,12 @@ export function GlobalSearchCommand() {
           </CommandGroup>
         )}
 
-        {archivedPlannings.length > 0 && (
+        {showsUnscopedTypes && archivedPlannings.length > 0 && (
           <CommandGroup heading="🗄️ Archivierte Planungen">
             {archivedPlannings.map((planning) => (
               <CommandItem
                 key={planning.id}
-                onSelect={() => runCommand(() => navigate(`/eventplanning/${planning.id}?highlight=${planning.id}`))}
+                onSelect={() => runCommand(() => navigate(buildSearchHref("planning", planning)))}
               >
                 <CalendarPlus className="mr-2 h-4 w-4" />
                 <span>{planning.title}</span>
@@ -835,12 +995,12 @@ export function GlobalSearchCommand() {
           </CommandGroup>
         )}
 
-        {archivedTasks && archivedTasks.length > 0 && (
+        {scopeShows("tasks") && archivedTasks && archivedTasks.length > 0 && (
           <CommandGroup heading="🗄️ Archivierte Aufgaben">
             {archivedTasks.map((task) => (
               <CommandItem
                 key={task.id}
-                onSelect={() => runCommand(() => navigate(`/?section=tasks&archived=true&task=${task.id}&highlight=${task.id}`))}
+                onSelect={() => runCommand(() => navigate(buildSearchHref("archivedTask", task)))}
               >
                 <CheckSquare className="mr-2 h-4 w-4" />
                 <span>{task.title}</span>
