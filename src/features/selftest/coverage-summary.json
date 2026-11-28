@@ -2,11 +2,11 @@
   "schemaVersion": 2,
   "source": "src/integrations/supabase/types.ts",
   "counts": {
-    "total": 358,
-    "scenario": 110,
+    "total": 363,
+    "scenario": 111,
     "deferred": 112,
     "excluded": 136,
-    "missing": 0,
+    "missing": 4,
     "exceptions": 248
   },
   "exceptionGroups": [
@@ -885,7 +885,10 @@
             "category",
             "tags",
             "notes",
-            "created_at"
+            "created_at",
+            "archived_at",
+            "archive_reason",
+            "archived_by"
           ]
         },
         {
@@ -1092,6 +1095,7 @@
         "task_decision_participants",
         "task_decision_responses",
         "task_decision_response_history",
+        "task_decision_vote_effects",
         "task_decision_attachments",
         "task_decision_comments",
         "task_decision_comment_reactions",
@@ -4284,6 +4288,30 @@
       }
     },
     {
+      "table": "ministry_history_changes",
+      "status": "missing",
+      "scenarios": [],
+      "exception": null
+    },
+    {
+      "table": "ministry_history_entries",
+      "status": "missing",
+      "scenarios": [],
+      "exception": null
+    },
+    {
+      "table": "ministry_history_lines",
+      "status": "missing",
+      "scenarios": [],
+      "exception": null
+    },
+    {
+      "table": "ministry_history_links",
+      "status": "missing",
+      "scenarios": [],
+      "exception": null
+    },
+    {
       "table": "mobile_push_tokens",
       "status": "excluded",
       "scenarios": [],
@@ -4989,6 +5017,14 @@
         "kind": "excluded",
         "expiresOn": "2027-06-30"
       }
+    },
+    {
+      "table": "task_decision_vote_effects",
+      "status": "scenario",
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "exception": null
     },
     {
       "table": "task_decisions",
@@ -5741,5 +5777,10 @@
       ]
     }
   ],
-  "errors": []
+  "errors": [
+    "Neue Tabelle ohne Einordnung: ministry_history_changes",
+    "Neue Tabelle ohne Einordnung: ministry_history_entries",
+    "Neue Tabelle ohne Einordnung: ministry_history_lines",
+    "Neue Tabelle ohne Einordnung: ministry_history_links"
+  ]
 }

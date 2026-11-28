@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 358 Tabellen haben 110 ein registriertes Szenario; 0 sind noch nicht eingeordnet. 248 sind befristet ausgenommen, davon 112 als Ausbau offen und 136 als technisch oder fachlich ausgenommen. Ausnahmen zählen nicht als bestanden.
+Von 363 Tabellen haben 111 ein registriertes Szenario; 4 sind noch nicht eingeordnet. 248 sind befristet ausgenommen, davon 112 als Ausbau offen und 136 als technisch oder fachlich ausgenommen. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -22,7 +22,7 @@ Von 358 Tabellen haben 110 ein registriertes Szenario; 0 sind noch nicht eingeor
 | `contact-relations` | Kontakt-Beziehungen (Datenschutz → Themen → Duplikate → Sammelaktion → Verteiler → Wissen → Förderungen) | contacts, contact_activities, contact_topics, topics, call_logs, distribution_lists, distribution_list_members, gdpr_requests, map_flags, map_flag_types, contact_briefing_memory, fundings, funding_participants |
 | `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | daily_briefings |
 | `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | day_slips, tasks, quick_notes |
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants, task_decision_responses, task_decision_response_history, task_decision_attachments, task_decision_comments, task_decision_comment_reactions, dashboard_decision_nudges |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants, task_decision_responses, task_decision_response_history, task_decision_vote_effects, task_decision_attachments, task_decision_comments, task_decision_comment_reactions, dashboard_decision_nudges |
 | `document-annotation` | Dokument-Annotation | documents, document_annotations, document_annotation_events, document_annotation_tasks, tasks, task_assignees |
 | `document-list` | Dokumente: Suche, Kategorien, Sortierung und Auswahl | Keine (reine Regeln) |
 | `election-analysis` | Wahlanalyse: Datenqualität und Vergleichbarkeit | Keine (reine Regeln) |
@@ -281,6 +281,10 @@ Von 358 Tabellen haben 110 ein registriertes Szenario; 0 sind noch nicht eingeor
 | `message_confirmations` | Ausgenommen bis 2027-06-30 | — |
 | `message_recipients` | Ausgenommen bis 2027-06-30 | — |
 | `messages` | Ausstehend bis 2027-03-31 | — |
+| `ministry_history_changes` | Einordnung fehlt | — |
+| `ministry_history_entries` | Einordnung fehlt | — |
+| `ministry_history_lines` | Einordnung fehlt | — |
+| `ministry_history_links` | Einordnung fehlt | — |
 | `mobile_push_tokens` | Ausgenommen bis 2027-06-30 | — |
 | `news_article_states` | Ausgenommen bis 2027-06-30 | — |
 | `news_articles` | Ausgenommen bis 2027-06-30 | — |
@@ -361,6 +365,7 @@ Von 358 Tabellen haben 110 ein registriertes Szenario; 0 sind noch nicht eingeor
 | `task_decision_response_history` | Szenario vorhanden | decision-lifecycle |
 | `task_decision_responses` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle, task-lifecycle |
 | `task_decision_topics` | Ausgenommen bis 2027-06-30 | — |
+| `task_decision_vote_effects` | Szenario vorhanden | decision-lifecycle |
 | `task_decisions` | Szenario vorhanden | case-item-lifecycle, decision-lifecycle, jour-fixe-platform-integration, quick-note-lifecycle, task-lifecycle |
 | `task_documents` | Szenario vorhanden | task-lifecycle |
 | `task_snoozes` | Szenario vorhanden | task-stafette-lifecycle |
@@ -503,7 +508,7 @@ Diese Manifeste sind keine Messung ausgeführter Assertions.
 - contact-lifecycle: `contacts`: name, user_id, tenant_id, email, phone, organization, title, category, tags, notes
 - contact-lifecycle: `contact_activities`: contact_id, tenant_id, created_by, activity_type, title, description
 - contact-lifecycle: `contact_usage_stats`: contact_id, tenant_id, user_id, usage_count
-- contact-relations: `contacts`: name, user_id, tenant_id, email, phone, category, tags, notes, created_at
+- contact-relations: `contacts`: name, user_id, tenant_id, email, phone, category, tags, notes, created_at, archived_at, archive_reason, archived_by
 - contact-relations: `contact_activities`: contact_id, tenant_id, created_by, activity_type, title, description
 - contact-relations: `contact_topics`: tenant_id, contact_id, topic_id
 - contact-relations: `topics`: label, tenant_id

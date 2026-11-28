@@ -1313,6 +1313,7 @@
             "task_decision_participants",
             "task_decision_responses",
             "task_decision_response_history",
+            "task_decision_vote_effects",
             "task_decision_attachments",
             "task_decision_comments",
             "task_decision_comment_reactions",
@@ -1326,6 +1327,7 @@
             "decisions.participants",
             "decisions.remind",
             "decisions.vote",
+            "decisions.withdraw-vote",
             "mywork.dashboard",
             "tasks.link-decision"
           ],

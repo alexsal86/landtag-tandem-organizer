@@ -129,6 +129,45 @@
       "dependsOn": ["decisions.participants"]
     },
     {
+      "id": "decisions.withdraw-vote",
+      "subarea": "Abstimmung",
+      "name": "Votum zurücknehmen",
+      "description": "Nimmt die eigene Antwort samt ihrer Aufgabenwirkung zurück: Ball, nächster Schritt und Frist kehren auf den Stand vor dem Votum zurück, solange die Aufgabe unverändert ist; eine weitergelaufene Aufgabe erhält nur einen Rücknahme-Vermerk.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/dashboard/DashboardDecisionsWidget.tsx",
+        "supabase/migrations/20261128090000_decision_vote_withdrawal_snapshot.sql"
+      ],
+      "components": [
+        "src/components/dashboard/DashboardDecisionsWidget.tsx"
+      ],
+      "rpcs": [
+        "withdraw_decision_response"
+      ],
+      "tables": [
+        "task_decision_responses",
+        "task_decision_vote_effects",
+        "task_decision_participants",
+        "tasks"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "dependsOn": ["decisions.vote"],
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "limitations": [
+        "Die Rücknahme an einer verknüpften Aufgabe mit gespeichertem Vorher-Zustand belegt der Datenbanktest scripts/test-decision-vote-withdrawal.mjs; das Selbsttest-Szenario nimmt bisher nur die Antwort einer eigenständigen Entscheidung zurück."
+      ]
+    },
+    {
       "id": "decisions.change-vote",
       "subarea": "Abstimmung",
       "name": "Antwort ändern und Verlauf einsehen",

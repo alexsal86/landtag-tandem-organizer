@@ -62,7 +62,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
 | `annual-task-stafette` | Jahresaufgabe → Büroaufgabe → Jahresabschluss | 3 | 5 | — |
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 8 | 6 | — |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 9 | 6 | — |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 7 | — |
 | `task-stafette-lifecycle` | Aufgaben-Stafette (Am Zug, Wiedervorlage, Freigabe) | 5 | 8 | — |
 

@@ -17,6 +17,7 @@ export const decisionLifecycleScenario: TestScenario = {
     "task_decision_participants",
     "task_decision_responses",
     "task_decision_response_history",
+    "task_decision_vote_effects",
     "task_decision_attachments",
     "task_decision_comments",
     "task_decision_comment_reactions",
@@ -141,9 +142,10 @@ export const decisionLifecycleScenario: TestScenario = {
             .select("id").single();
           if (insertError || !response) return { ok: false, message: describeError(insertError) };
           ctx.trackRecord({ table: "task_decision_responses", id: response.id });
-          const { data: deleted, error: deleteError } = await supabase.from("task_decision_responses")
-            .delete().eq("id", response.id).select("id");
-          if (deleteError || deleted?.length !== 1) return { ok: false, message: deleteError?.message ?? "Eigene Antwort wurde nicht gelöscht." };
+          const withdrawn = await supabase.rpc("withdraw_decision_response", {
+            _decision_id: ctx.data.decisionId as string, _participant_id: ctx.data.participantId as string,
+          });
+          if (withdrawn.error) return { ok: false, message: describeError(withdrawn.error) };
           const { data: remaining, error: readError } = await supabase.from("task_decision_responses")
             .select("id").eq("participant_id", ctx.data.participantId as string).is("parent_response_id", null);
           if (readError || remaining?.length) return { ok: false, message: readError?.message ?? "Antwort bleibt nach Rücknahme bestehen." };

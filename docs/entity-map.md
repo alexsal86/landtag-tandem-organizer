@@ -2,13 +2,13 @@
 
 _Auto-generiert mit `npm run update:feature-catalog` aus den Fremdschlüsseln in `src/integrations/supabase/types.ts`. Nicht von Hand bearbeiten._
 
-362 Tabellen, 498 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
+363 Tabellen, 502 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
 
 ## Zentrale Tabellen
 
 Tabellen mit mindestens drei eingehenden Verweisen.
 
-### `tenants` — 144 eingehende Verweise
+### `tenants` — 145 eingehende Verweise
 
 | Von | Spalte |
 |---|---|
@@ -129,6 +129,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `tags` | `tenant_id` |
 | `task_batch_actions` | `tenant_id` |
 | `task_categories` | `tenant_id` |
+| `task_decision_vote_effects` | `tenant_id` |
 | `task_decisions` | `tenant_id` |
 | `tasks` | `tenant_id` |
 | `team_announcements` | `tenant_id` |
@@ -229,7 +230,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `knowledge_question_sources` | `case_id` |
 | `task_decisions` | `case_file_id` |
 
-### `tasks` — 14 eingehende Verweise
+### `tasks` — 15 eingehende Verweise
 
 | Von | Spalte |
 |---|---|
@@ -243,6 +244,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `subtasks` | `task_id` |
 | `task_assignees` | `task_id` |
 | `task_comments` | `task_id` |
+| `task_decision_vote_effects` | `task_id` |
 | `task_decisions` | `task_id` |
 | `task_documents` | `task_id` |
 | `task_topics` | `task_id` |
@@ -316,7 +318,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `task_decisions` | `meeting_id` |
 | `tasks` | `meeting_id` |
 
-### `task_decisions` — 10 eingehende Verweise
+### `task_decisions` — 11 eingehende Verweise
 
 | Von | Spalte |
 |---|---|
@@ -330,6 +332,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `task_decision_response_history` | `decision_id` |
 | `task_decision_responses` | `decision_id` |
 | `task_decision_topics` | `decision_id` |
+| `task_decision_vote_effects` | `decision_id` |
 
 ### `case_items` — 9 eingehende Verweise
 
@@ -605,6 +608,14 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `decision_matrix_messages` | `participant_id` |
 | `task_decision_response_history` | `participant_id` |
 | `task_decision_responses` | `participant_id` |
+
+### `task_decision_responses` — 3 eingehende Verweise
+
+| Von | Spalte |
+|---|---|
+| `task_decision_response_history` | `response_id` |
+| `task_decision_responses` | `parent_response_id` |
+| `task_decision_vote_effects` | `response_id` |
 
 ### `team_ritual_profiles` — 3 eingehende Verweise
 
@@ -1056,6 +1067,10 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `task_decision_topics` | `decision_id` | `task_decisions` |
 | `task_decision_topics` | `tenant_id`, `topic_id` | `topics` |
 | `task_decision_topics` | `topic_id` | `topics` |
+| `task_decision_vote_effects` | `response_id` | `task_decision_responses` |
+| `task_decision_vote_effects` | `decision_id` | `task_decisions` |
+| `task_decision_vote_effects` | `task_id` | `tasks` |
+| `task_decision_vote_effects` | `tenant_id` | `tenants` |
 | `task_decisions` | `case_file_id` | `case_files` |
 | `task_decisions` | `case_item_id` | `case_items` |
 | `task_decisions` | `meeting_id` | `meetings` |

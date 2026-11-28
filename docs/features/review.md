@@ -107,7 +107,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `knowledge.collaboration` — Kollaborative Wissensbearbeitung
 - `knowledge.management` — Wissensverwaltung
 
-## Funktionen ohne Dokumentationsverweis (176)
+## Funktionen ohne Dokumentationsverweis (177)
 
 - `mywork.dashboard.today-priorities` — Heute zuerst
 - `mywork.tabs` — Meine Arbeit – Bereichsnavigation und Einstellungen
@@ -153,6 +153,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `letters.attachments` — Briefanlagen verwalten
 - `decisions.participants` — Teilnehmende und Antwort-Token verwalten
 - `decisions.vote` — Abstimmen
+- `decisions.withdraw-vote` — Votum zurücknehmen
 - `decisions.change-vote` — Antwort ändern und Verlauf einsehen
 - `decisions.attachments` — Anhänge an Entscheidungen
 - `decisions.remind` — Offene Entscheidungen anmahnen
@@ -299,7 +300,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (115)
+## Funktionen mit Einschränkungen oder offenen Punkten (116)
 
 ### `mywork.dashboard`
 
@@ -464,6 +465,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `letters.archive`
 
 - Die Folgeaufgabe hat genau einen Erzeuger: den Trigger trigger_letter_followup_task beim Wechsel auf sent. Die Archivfunktion erzeugt keine zweite Aufgabe, sondern liefert die bestehende ID über create_letter_archive_follow_up_task; ein Fehler dabei wird als followUpTaskError gemeldet, ohne den abgeschlossenen Versand abzubrechen. Der Client zieht die Aufgabe nur nach, wenn die Funktion keine ID liefert. Trigger und RPC verknüpfen die Aufgabe über source_type letter_followup und source_id des Briefes; der zusammengebaute Titel dient nur noch dem Altbestand und wird dabei in die Verknüpfung überführt.
+
+### `decisions.withdraw-vote`
+
+- Die Rücknahme an einer verknüpften Aufgabe mit gespeichertem Vorher-Zustand belegt der Datenbanktest scripts/test-decision-vote-withdrawal.mjs; das Selbsttest-Szenario nimmt bisher nur die Antwort einer eigenständigen Entscheidung zurück.
 
 ### `decisions.change-vote`
 

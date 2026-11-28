@@ -6,10 +6,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **10** in **7** Unterbereichen
-- implementiert: **10**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **11** in **7** Unterbereichen
+- implementiert: **11**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **3**
-- ohne Dokumentationsverweis: **8**
+- ohne Dokumentationsverweis: **9**
 
 ## Funktionen
 
@@ -18,6 +18,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `decisions.vote` Abstimmen | Abstimmung | fachlich | implementiert | UI | Selbsttest |
 | `decisions.change-vote` Antwort ändern und Verlauf einsehen | Abstimmung | fachlich | implementiert | UI | Selbsttest |
 | `decisions.comments` Kommentare und Reaktionen | Abstimmung | fachlich | implementiert | UI | Selbsttest |
+| `decisions.withdraw-vote` Votum zurücknehmen | Abstimmung | fachlich | implementiert | UI | Selbsttest |
 | `decisions.attachments` Anhänge an Entscheidungen | Anlegen | fachlich | implementiert | UI | teilweise |
 | `decisions.create` Entscheidung anlegen | Anlegen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.archive` Entscheidungen archivieren | Archiv | automatisiert | implementiert | systemseitig | kein Test |
@@ -42,13 +43,13 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`dashboard_decision_nudges`, `decision_archive_settings`, `decision_email_templates`, `decision_matrix_messages`, `email_logs`, `task_decision_attachments`, `task_decision_comment_reactions`, `task_decision_comments`, `task_decision_participants`, `task_decision_response_history`, `task_decision_responses`, `task_decision_topics`, `task_decisions`, `tasks`
+`dashboard_decision_nudges`, `decision_archive_settings`, `decision_email_templates`, `decision_matrix_messages`, `email_logs`, `task_decision_attachments`, `task_decision_comment_reactions`, `task_decision_comments`, `task_decision_participants`, `task_decision_response_history`, `task_decision_responses`, `task_decision_topics`, `task_decision_vote_effects`, `task_decisions`, `tasks`
 
 ## Selbsttest-Szenarien
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 8 | 6 | — |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 9 | 6 | — |
 
 ## Selbsttest-Schritte
 
@@ -187,6 +188,42 @@ Nimmt Ja/Nein/Enthaltung an, protokolliert die Antwort und stößt Benachrichtig
 **Bekannte Einschränkungen**
 
 - Keine.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `decisions.withdraw-vote` — Votum zurücknehmen
+Nimmt die eigene Antwort samt ihrer Aufgabenwirkung zurück: Ball, nächster Schritt und Frist kehren auf den Stand vor dem Votum zurück, solange die Aufgabe unverändert ist; eine weitergelaufene Aufgabe erhält nur einen Rücknahme-Vermerk.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/components/dashboard/DashboardDecisionsWidget.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `withdraw_decision_response`
+- **Tabellen:** `task_decision_responses`, `task_decision_vote_effects`, `task_decision_participants`, `tasks`
+- **Abhängigkeiten:** `decisions.vote`
+- **Selbsttests:** `decision-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/components/dashboard/DashboardDecisionsWidget.tsx
+- supabase/migrations/20261128090000_decision_vote_withdrawal_snapshot.sql
+
+**Bekannte Einschränkungen**
+
+- Die Rücknahme an einer verknüpften Aufgabe mit gespeichertem Vorher-Zustand belegt der Datenbanktest scripts/test-decision-vote-withdrawal.mjs; das Selbsttest-Szenario nimmt bisher nur die Antwort einer eigenständigen Entscheidung zurück.
 
 **Offene Prüfpunkte**
 
