@@ -6,8 +6,8 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **12** in **8** Unterbereichen
-- implementiert: **12**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **13** in **8** Unterbereichen
+- implementiert: **13**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **3**
 - ohne Dokumentationsverweis: **9**
 
@@ -26,6 +26,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `decisions.remind` Offene Entscheidungen anmahnen | Erinnerungen | fachlich | implementiert | UI | teilweise |
 | `decisions.matrix` Entscheidungen über Matrix beantworten | Integration | integration | implementiert | systemseitig | kein Test |
 | `decisions.notification-digest` Gebündelte Entscheidungs-Meldungen | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `decisions.notification-actions` Meldungen bedienbar machen | Meldungen | fachlich | implementiert | UI | Selbsttest |
 | `decisions.participants` Teilnehmende und Antwort-Token verwalten | Teilnehmende | fachlich | implementiert | rollenabhängig | Selbsttest |
 
 ## Unterbereiche
@@ -73,6 +74,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `notifications` | Meldungen entstehen im Mandanten der Entscheidung | workflow | — |
 | `decision-lifecycle` | `invitation-dispatch` | Einladungsversand wird serverseitig eingestellt und übernommen | workflow | — |
 | `decision-lifecycle` | `lifecycle-notifications` | Frist, Rückzug, Ergebnis und direkte Antwort melden | workflow | — |
+| `decision-lifecycle` | `notification-actions` | Aus der Meldung abstimmen und Antwort aktualisieren | workflow | — |
 | `decision-lifecycle` | `digest` | Meldungen werden gebündelt und nur der Digest wird gepusht | workflow | — |
 | `decision-lifecycle` | `set-open` | Status auf 'open' | db | — |
 | `decision-lifecycle` | `archive` | Archivieren | db | — |
@@ -135,14 +137,14 @@ Erstellt eine Entscheidung mit Optionen, Frist, Teilnehmenden, Anhängen und Bez
 - **Services:** —
 - **Hooks:** `src/hooks/useMyWorkDecisionsData.ts`, `src/hooks/useDefaultDecisionSettings.ts`
 - **Edge Functions:** `send-decision-email`, `dispatch-decision-invitations`
-- **Datenbankfunktionen:** `create_work_decision`, `decision_notification_selftest`, `decision_invitation_dispatch_selftest`, `decision_lifecycle_notification_selftest`, `request_decision_email_invites`, `enqueue_decision_invitation_dispatch`, `claim_decision_invitation_dispatches`, `finish_decision_invitation_dispatch`
+- **Datenbankfunktionen:** `create_work_decision`, `decision_notification_selftest`, `decision_invitation_dispatch_selftest`, `decision_lifecycle_notification_selftest`, `decision_notification_actions_selftest`, `respond_to_decision`, `request_decision_email_invites`, `enqueue_decision_invitation_dispatch`, `claim_decision_invitation_dispatches`, `finish_decision_invitation_dispatch`
 - **Tabellen:** `task_decisions`, `task_decision_participants`, `task_decision_topics`, `task_decision_attachments`, `decision_invitation_dispatches`
 - **Abhängigkeiten:** —
 - **Selbsttests:** `decision-lifecycle`
 - **Unit-Tests:** —
 - **Integrationstests:** —
 - **Browser-Tests:** —
-- **Dokumentation:** `docs/my-work-decisions-button-flowchart.md`, `docs/decision-notifications.md`, `docs/decision-invitation-dispatch.md`, `docs/decision-lifecycle-notifications.md`
+- **Dokumentation:** `docs/my-work-decisions-button-flowchart.md`, `docs/decision-notifications.md`, `docs/decision-invitation-dispatch.md`, `docs/decision-lifecycle-notifications.md`, `docs/decision-notification-actions.md`
 
 **Nachweise im Quellcode**
 
@@ -377,6 +379,45 @@ Fasst offene Kommentar-, Antwort- und Reaktionsmeldungen je Empfänger und Entsc
 **Bekannte Einschränkungen**
 
 - Nicht geprüft: echter Cron-Lauf, tatsächlicher Push-Versand, parallele Flush-Läufe und eine Oberfläche für die Mandanteneinstellung. Die Einstellung ist derzeit nur über set_decision_notification_timing erreichbar.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `decisions.notification-actions` — Meldungen bedienbar machen
+Erlaubt die Abstimmung direkt aus einer Anfrage- oder Digest-Meldung über respond_to_decision, öffnet Kommentar- und Antwortmeldungen an der konkreten Stelle und zeigt beim Anstupsen Person und Anzahl.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** `/decisions`, `/notifications`
+- **Frontend-Komponenten:** `src/components/notifications/DecisionQuickResponse.tsx`, `src/components/notifications/NotificationCenter.tsx`, `src/components/dashboard/DashboardDecisionsWidget.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `respond_to_decision`, `decision_notification_actions_selftest`
+- **Tabellen:** `task_decision_responses`, `dashboard_decision_nudges`
+- **Abhängigkeiten:** `decisions.vote`
+- **Selbsttests:** `decision-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/decision-notification-actions.md`
+
+**Nachweise im Quellcode**
+
+- src/components/notifications/DecisionQuickResponse.tsx
+- src/components/task-decisions/DecisionOverview.tsx
+- src/utils/notificationDeepLinks.ts
+- src/features/decisions/dashboardNudges.ts
+- supabase/migrations/20261128221000_decision_notification_actions.sql
+
+**Bekannte Einschränkungen**
+
+- Geprüft sind RPC-Verhalten und Formatierung; echte Klicks, Scrollen und Hervorhebung im Browser sowie Push sind nicht ausgeführt.
 
 **Offene Prüfpunkte**
 

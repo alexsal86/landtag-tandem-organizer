@@ -1,4 +1,4 @@
-import { canNudgeDecision, DECISION_NUDGE_WINDOW_MS, decisionNudgePriority, decisionNudgeSecondsRemaining } from "@/features/decisions/dashboardNudges";
+import { canNudgeDecision, DECISION_NUDGE_WINDOW_MS, decisionNudgePriority, decisionNudgeSecondsRemaining, decisionNudgeSummary } from "@/features/decisions/dashboardNudges";
 import { needsOwnDecision } from "@/components/my-work/decisions/types";
 import { supabase } from "@/integrations/supabase/client";
 import type { TestScenario } from "../types";
@@ -68,6 +68,9 @@ export const decisionLifecycleScenario: TestScenario = {
           decisionNudgePriority(now.toISOString(), now) > 0,
           decisionNudgePriority(new Date(now.getTime() - 24 * 3600_000).toISOString(), now) === 0,
           decisionNudgePriority(undefined, now) === 0,
+          decisionNudgeSummary("Anna", 1, now.toISOString()).startsWith("Angestupst von Anna · heute"),
+          decisionNudgeSummary("Anna", 3, now.toISOString()).includes("von Anna · 3×"),
+          decisionNudgeSummary(null, 0, now.toISOString()).startsWith("Angestupst · heute"),
           decisionNudgeSecondsRemaining(deadline, now.getTime()) === 10,
           decisionNudgeSecondsRemaining(deadline, deadline - 1) === 1,
           decisionNudgeSecondsRemaining(deadline, deadline) === 0,
@@ -443,6 +446,21 @@ export const decisionLifecycleScenario: TestScenario = {
           message: report?.ok === true
             ? "Friständerung, früher Rückzug, Ergebnis an Teilnehmende, gezielte Antwort und visible_to_all-Anfrage wurden zugestellt."
             : (report?.skipped ?? report?.message ?? "Lebenszyklus-Selbsttest fehlgeschlagen."),
+          details: report?.checks,
+        };
+      },
+    },
+    {
+      id: "notification-actions", label: "Aus der Meldung abstimmen und Antwort aktualisieren", kind: "workflow",
+      run: async (ctx) => {
+        const { data, error } = await supabase.rpc("decision_notification_actions_selftest", { p_tenant: ctx.tenantId });
+        if (error) return { ok: false, message: describeError(error) };
+        const report = data as { ok?: boolean; message?: string; checks?: Record<string, unknown> } | null;
+        return {
+          ok: report?.ok === true,
+          message: report?.ok === true
+            ? "Antwort aus der Meldung wurde gespeichert, eine zweite Antwort aktualisiert dieselbe Zeile; ungültige Typen und fremde Entscheidungen werden abgewiesen."
+            : (report?.message ?? "Aktions-Selbsttest fehlgeschlagen."),
           details: report?.checks,
         };
       },

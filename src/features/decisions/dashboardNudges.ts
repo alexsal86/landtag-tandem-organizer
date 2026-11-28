@@ -27,6 +27,12 @@ export function decisionNudgeDateTime(value: string, now = new Date()): string {
   return `${prefix} um ${decisionNudgeTime(value)}`;
 }
 
+export function decisionNudgeSummary(byName: string | null | undefined, count: number | null | undefined, at: string): string {
+  const person = byName ? ` von ${byName}` : "";
+  const times = (count ?? 0) > 1 ? ` · ${count}×` : "";
+  return `Angestupst${person}${times} · ${decisionNudgeDateTime(at)}`;
+}
+
 export function decisionNudgeSecondsRemaining(deadline: number, now = Date.now()): number {
   return Math.max(0, Math.ceil((deadline - now) / 1000));
 }

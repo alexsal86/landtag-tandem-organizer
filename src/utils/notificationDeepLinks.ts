@@ -53,8 +53,18 @@ export const buildDeepLinkPath = (notification: Notification): string => {
     case 'task_decision_withdrawn':
     case 'decision_request':
     case 'decision_response':
-    case 'decision_completed':
-      return buildHighlightPath('/decisions', getNotificationDataId(data, 'decision_id'));
+    case 'decision_completed': {
+      let path = buildHighlightPath('/decisions', getNotificationDataId(data, 'decision_id'));
+      const commentId = getNotificationDataId(data, 'comment_id', 'parent_comment_id');
+      const responseId = getNotificationDataId(data, 'response_id');
+      if (commentId) path += `${path.includes('?') ? '&' : '?'}comment=${encodeURIComponent(commentId)}`;
+      if (responseId) path += `${path.includes('?') ? '&' : '?'}response=${encodeURIComponent(responseId)}`;
+      if (!commentId && !responseId
+        && (typeName === 'task_decision_request' || typeName === 'task_decision_digest')) {
+        path += `${path.includes('?') ? '&' : '?'}respond=1`;
+      }
+      return path;
+    }
 
     case 'appointment_reminder': {
       // Der Kalender öffnet mit ?highlight=<id> genau diesen Termin samt

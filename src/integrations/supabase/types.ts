@@ -3574,6 +3574,7 @@ export type Database = {
         Row: {
           decision_id: string
           note: string | null
+          nudge_count: number
           nudged_at: string
           nudged_by: string | null
           tenant_id: string
@@ -3581,6 +3582,7 @@ export type Database = {
         Insert: {
           decision_id: string
           note?: string | null
+          nudge_count?: number
           nudged_at?: string
           nudged_by?: string | null
           tenant_id: string
@@ -3588,6 +3590,7 @@ export type Database = {
         Update: {
           decision_id?: string
           note?: string | null
+          nudge_count?: number
           nudged_at?: string
           nudged_by?: string | null
           tenant_id?: string
@@ -19278,6 +19281,11 @@ export type Database = {
       }
       decision_digest_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_invitation_dispatch_selftest: { Args: { p_tenant: string }; Returns: Json }
+      decision_notification_actions_selftest: { Args: { p_tenant: string }; Returns: Json }
+      respond_to_decision: {
+        Args: { _decision_id: string; _response_type: string }
+        Returns: Json
+      }
       flush_decision_notification_digests: { Args: never; Returns: number }
       set_decision_notification_timing: {
         Args: { _tenant_id: string; _reaction_minutes: number; _digest_minutes: number }
@@ -19680,6 +19688,7 @@ export type Database = {
         Returns: {
           decision_id: string
           nudge_note: string
+          nudge_count: number
           nudged_at: string
           nudged_by_name: string
           title: string

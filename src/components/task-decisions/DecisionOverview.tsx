@@ -76,6 +76,31 @@ export const DecisionOverview = () => {
     if (user?.id) loadDecisionRequests(user.id);
   }, [user?.id]);
 
+  // Kommentar- oder Antwortmeldung öffnet die Entscheidung direkt an der Stelle.
+  useEffect(() => {
+    const commentId = searchParams.get("comment");
+    const responseId = searchParams.get("response");
+    const respond = searchParams.get("respond") === "1";
+    if ((!commentId && !responseId && !respond) || decisions.length === 0) return;
+
+    const highlightId = searchParams.get("highlight");
+    const decision = decisions.find((d) => d.id === highlightId);
+    if (!decision) return;
+
+    setSelectedDecisionId(decision.id);
+    setHighlightCommentId(commentId);
+    setHighlightResponseId(responseId);
+    setIsDetailsOpen(true);
+
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("comment");
+      next.delete("response");
+      next.delete("respond");
+      return next;
+    }, { replace: true });
+  }, [decisions, searchParams, setSearchParams]);
+
   // Auto-switch tab when notification highlight points to a decision in a different tab
   useEffect(() => {
     const highlightId = searchParams.get("highlight");

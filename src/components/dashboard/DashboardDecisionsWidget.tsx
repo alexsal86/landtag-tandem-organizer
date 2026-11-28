@@ -1,5 +1,5 @@
 import { useWorkspaceView } from "@/contexts/WorkspaceViewContext";
-import { decisionNudgeDateTime, decisionNudgePriority } from "@/features/decisions/dashboardNudges";
+import { decisionNudgePriority, decisionNudgeSummary } from "@/features/decisions/dashboardNudges";
 import { useDeputyDashboardDecisions, type DeputyDashboardDecision } from "@/features/decisions/useDeputyDashboardDecisions";
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -136,7 +136,7 @@ function DecisionRow({ decision, expanded, onToggle, nudge, onDismissConfirmed, 
       {expanded && nudge?.nudged_at && <div className="animate-fade-up mb-3 rounded-xl bg-[#eee9f9] px-3 py-2 text-xs" role="status">
         <p className="flex items-center gap-1.5 text-meta font-medium text-[#8b5cf6]">
           <Bell className="h-3 w-3 shrink-0" aria-hidden="true" />
-          <span>Angestoßen {nudge.nudged_by_name ? `von ${nudge.nudged_by_name} ` : ""}{decisionNudgeDateTime(nudge.nudged_at)}</span>
+          <span>{decisionNudgeSummary(nudge.nudged_by_name, nudge.nudge_count, nudge.nudged_at)}</span>
         </p>
         {nudge.nudge_note && <p className="mt-1 whitespace-pre-wrap text-meta font-normal text-[#18202b]">{nudge.nudge_note}</p>}
       </div>}

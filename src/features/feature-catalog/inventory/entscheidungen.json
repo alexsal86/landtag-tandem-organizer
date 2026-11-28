@@ -40,6 +40,8 @@
         "decision_notification_selftest",
         "decision_invitation_dispatch_selftest",
         "decision_lifecycle_notification_selftest",
+        "decision_notification_actions_selftest",
+        "respond_to_decision",
         "request_decision_email_invites",
         "enqueue_decision_invitation_dispatch",
         "claim_decision_invitation_dispatches",
@@ -68,7 +70,8 @@
         "docs/my-work-decisions-button-flowchart.md",
         "docs/decision-notifications.md",
         "docs/decision-invitation-dispatch.md",
-        "docs/decision-lifecycle-notifications.md"
+        "docs/decision-lifecycle-notifications.md",
+        "docs/decision-notification-actions.md"
       ]
     },
     {
@@ -306,6 +309,56 @@
       ],
       "limitations": [
         "Nicht geprüft: echter Cron-Lauf, tatsächlicher Push-Versand, parallele Flush-Läufe und eine Oberfläche für die Mandanteneinstellung. Die Einstellung ist derzeit nur über set_decision_notification_timing erreichbar."
+      ]
+    },
+    {
+      "id": "decisions.notification-actions",
+      "subarea": "Meldungen",
+      "name": "Meldungen bedienbar machen",
+      "description": "Erlaubt die Abstimmung direkt aus einer Anfrage- oder Digest-Meldung über respond_to_decision, öffnet Kommentar- und Antwortmeldungen an der konkreten Stelle und zeigt beim Anstupsen Person und Anzahl.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/components/notifications/DecisionQuickResponse.tsx",
+        "src/components/task-decisions/DecisionOverview.tsx",
+        "src/utils/notificationDeepLinks.ts",
+        "src/features/decisions/dashboardNudges.ts",
+        "supabase/migrations/20261128221000_decision_notification_actions.sql"
+      ],
+      "routes": [
+        "/decisions",
+        "/notifications"
+      ],
+      "components": [
+        "src/components/notifications/DecisionQuickResponse.tsx",
+        "src/components/notifications/NotificationCenter.tsx",
+        "src/components/dashboard/DashboardDecisionsWidget.tsx"
+      ],
+      "rpcs": [
+        "respond_to_decision",
+        "decision_notification_actions_selftest"
+      ],
+      "tables": [
+        "task_decision_responses",
+        "dashboard_decision_nudges"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "dependsOn": ["decisions.vote"],
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "docs": [
+        "docs/decision-notification-actions.md"
+      ],
+      "limitations": [
+        "Geprüft sind RPC-Verhalten und Formatierung; echte Klicks, Scrollen und Hervorhebung im Browser sowie Push sind nicht ausgeführt."
       ]
     },
     {

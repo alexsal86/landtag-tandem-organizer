@@ -1335,6 +1335,7 @@
             "decisions.change-vote",
             "decisions.comments",
             "decisions.create",
+            "decisions.notification-actions",
             "decisions.notification-digest",
             "decisions.participants",
             "decisions.remind",
@@ -1395,6 +1396,10 @@
             {
               "id": "lifecycle-notifications",
               "label": "Frist, Rückzug, Ergebnis und direkte Antwort melden"
+            },
+            {
+              "id": "notification-actions",
+              "label": "Aus der Meldung abstimmen und Antwort aktualisieren"
             },
             {
               "id": "digest",

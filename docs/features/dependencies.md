@@ -77,6 +77,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `decisions.change-vote` | `decisions.vote` |
 | `decisions.comments` | `decisions.create` |
 | `decisions.notification-digest` | `decisions.comments` |
+| `decisions.notification-actions` | `decisions.vote` |
 | `decisions.attachments` | `decisions.create` |
 | `decisions.remind` | `decisions.create` |
 | `decisions.archive` | `decisions.vote` |

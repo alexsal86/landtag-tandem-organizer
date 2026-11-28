@@ -989,6 +989,11 @@
   ],
   "dashboard_decision_nudges": [
     {
+      "id": "decisions.notification-actions",
+      "name": "Meldungen bedienbar machen",
+      "area": "entscheidungen"
+    },
+    {
       "id": "decisions.remind",
       "name": "Offene Entscheidungen anmahnen",
       "area": "entscheidungen"
@@ -3531,6 +3536,11 @@
     {
       "id": "decisions.matrix",
       "name": "Entscheidungen über Matrix beantworten",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.notification-actions",
+      "name": "Meldungen bedienbar machen",
       "area": "entscheidungen"
     },
     {

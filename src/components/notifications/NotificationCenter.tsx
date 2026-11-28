@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DecisionQuickResponse } from './DecisionQuickResponse';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -229,6 +230,11 @@ const NotificationItem = ({ notification, onMarkRead, onDelete, onClose }: Notif
         </div>
 
         <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{notification.message}</p>
+
+        <DecisionQuickResponse
+          notification={notification}
+          onDone={() => { if (!notification.is_read) void onMarkRead(notification.id); }}
+        />
 
         <div className="mt-2 flex items-center justify-between">
           <div className="flex flex-col gap-0.5">

@@ -12,6 +12,7 @@ import {
   Monitor, ArrowUpRight, ArrowDownRight, ArrowUp, Upload, Trash2, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DecisionQuickResponse } from '@/components/notifications/DecisionQuickResponse';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -550,6 +551,10 @@ export function NotificationsPage(): JSX.Element {
                               </div>
                             </div>
                             <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
+                            <DecisionQuickResponse
+                              notification={notification}
+                              onDone={() => { if (!notification.is_read) void markAsRead(notification.id); }}
+                            />
                             <div className="flex flex-col gap-0.5 mt-2">
                               <span className="text-xs text-muted-foreground">
                                 {format(new Date(notification.created_at), "dd.MM.yyyy 'um' HH:mm", { locale: de })}
