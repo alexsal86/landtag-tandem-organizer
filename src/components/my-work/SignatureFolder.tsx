@@ -16,7 +16,7 @@ import { STALE_TIME } from "@/lib/query-cache";
 import { decideFolderEntry, folderDate, folderTypes, loadSignatureFolder, type FolderEntry, type FolderType } from "./signatureFolderData";
 
 const pill = "min-h-10 rounded-full px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2";
-const compactPill = "inline-flex h-7 items-center rounded-full px-3 text-meta font-medium focus-visible:outline-2 focus-visible:outline-offset-2";
+const compactPill = "inline-flex h-7 items-center rounded-full px-3 text-[13px] font-medium focus-visible:outline-2 focus-visible:outline-offset-2";
 const green = "bg-[#38761c] text-white hover:bg-[#2b5e15] disabled:opacity-50";
 const muted = "bg-muted text-foreground hover:bg-muted/75";
 const entryKey = (entry: FolderEntry) => `${entry.type}:${entry.id}:${entry.version ?? ""}`;
@@ -125,7 +125,7 @@ function FolderRow({ entry, open, read, toggle, decide, onDone }: {
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 sm:flex-nowrap">
         <span className={cn("shrink-0 rounded-full px-2 py-1 text-xs font-medium", category?.color)}>{category?.label}</span>
         <div className="min-w-0 grow basis-36">
-          <h4 className="break-words text-sm font-semibold leading-snug">{entry.title}</h4>
+          <h4 className="break-words text-[14px] font-semibold leading-snug">{entry.title}</h4>
           {metadata && <p className="mt-0.5 text-xs text-muted-foreground">{metadata}</p>}
           {entry.reminder && <p className="mt-1.5 inline-block rounded-xl bg-amber-50 px-2.5 py-1 text-sm text-amber-900">🔔 {entry.reminder}</p>}
         </div>
@@ -144,7 +144,7 @@ function FolderRow({ entry, open, read, toggle, decide, onDone }: {
             ? <img src={entry.image} alt="Beitragsbild" className="aspect-square w-20 rounded-lg object-cover sm:w-24" />
             : <div aria-hidden="true" className="aspect-square w-20 rounded-lg bg-linear-to-br from-[#58a124] to-[#387fea] sm:w-24" />)}
           <div className="min-w-0 flex-1 basis-40 space-y-2">
-            {entry.type === "press" && <h5 className="text-base font-semibold">{entry.title}</h5>}
+            {entry.type === "press" && <h5 className="text-[14px] font-semibold">{entry.title}</h5>}
             <RichTextDisplay content={entry.content} className={cn("break-words text-base leading-relaxed text-foreground", entry.type === "press" && "font-serif")} />
             {entry.hashtags?.length ? <p className="break-words text-sm text-muted-foreground">{entry.hashtags.map(tag => tag.startsWith("#") ? tag : `#${tag}`).join(" ")}</p> : null}
             {entry.results?.map((result, i) => <div key={i}>
