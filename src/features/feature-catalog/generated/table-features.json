@@ -994,6 +994,11 @@
       "area": "entscheidungen"
     },
     {
+      "id": "decisions.notification-metrics",
+      "name": "Wirkung der Entscheidungs-Meldungen messen",
+      "area": "entscheidungen"
+    },
+    {
       "id": "decisions.remind",
       "name": "Offene Entscheidungen anmahnen",
       "area": "entscheidungen"
@@ -1044,12 +1049,24 @@
       "id": "decisions.create",
       "name": "Entscheidung anlegen",
       "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.notification-metrics",
+      "name": "Wirkung der Entscheidungs-Meldungen messen",
+      "area": "entscheidungen"
     }
   ],
   "decision_matrix_messages": [
     {
       "id": "decisions.matrix",
       "name": "Entscheidungen über Matrix beantworten",
+      "area": "entscheidungen"
+    }
+  ],
+  "decision_notification_trigger_errors": [
+    {
+      "id": "decisions.notification-metrics",
+      "name": "Wirkung der Entscheidungs-Meldungen messen",
       "area": "entscheidungen"
     }
   ],
@@ -2786,6 +2803,11 @@
       "area": "entscheidungen"
     },
     {
+      "id": "decisions.notification-metrics",
+      "name": "Wirkung der Entscheidungs-Meldungen messen",
+      "area": "entscheidungen"
+    },
+    {
       "id": "notifications.inbox",
       "name": "Benachrichtigungen lesen und als gelesen markieren",
       "area": "arbeitsbereich"
@@ -2810,6 +2832,11 @@
     {
       "id": "decisions.notification-digest",
       "name": "Gebündelte Entscheidungs-Meldungen",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.notification-metrics",
+      "name": "Wirkung der Entscheidungs-Meldungen messen",
       "area": "entscheidungen"
     },
     {
@@ -3500,6 +3527,11 @@
       "area": "entscheidungen"
     },
     {
+      "id": "decisions.notification-metrics",
+      "name": "Wirkung der Entscheidungs-Meldungen messen",
+      "area": "entscheidungen"
+    },
+    {
       "id": "decisions.participants",
       "name": "Teilnehmende und Antwort-Token verwalten",
       "area": "entscheidungen"
@@ -3541,6 +3573,11 @@
     {
       "id": "decisions.notification-actions",
       "name": "Meldungen bedienbar machen",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.notification-metrics",
+      "name": "Wirkung der Entscheidungs-Meldungen messen",
       "area": "entscheidungen"
     },
     {
@@ -4113,6 +4150,11 @@
     }
   ],
   "user_notification_settings": [
+    {
+      "id": "decisions.notification-metrics",
+      "name": "Wirkung der Entscheidungs-Meldungen messen",
+      "area": "entscheidungen"
+    },
     {
       "id": "notifications.preferences",
       "name": "Benachrichtigungseinstellungen und Stummschaltung",

@@ -300,7 +300,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (118)
+## Funktionen mit Einschränkungen oder offenen Punkten (119)
 
 ### `mywork.dashboard`
 
@@ -482,6 +482,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `decisions.notification-digest`
 
 - Nicht geprüft: echter Cron-Lauf, tatsächlicher Push-Versand, parallele Flush-Läufe und eine Oberfläche für die Mandanteneinstellung. Die Einstellung ist derzeit nur über set_decision_notification_timing erreichbar.
+
+### `decisions.notification-metrics`
+
+- Es gibt noch keine Kennzahlenansicht in der Oberfläche; die Werte sind über die RPC abrufbar. Echte Push-/E-Mail-Zustellung und Cron-Läufe sind nicht ausgeführt.
 
 ### `decisions.notification-actions`
 

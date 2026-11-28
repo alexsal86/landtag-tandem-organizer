@@ -1337,6 +1337,7 @@
             "decisions.create",
             "decisions.notification-actions",
             "decisions.notification-digest",
+            "decisions.notification-metrics",
             "decisions.participants",
             "decisions.remind",
             "decisions.vote",
@@ -1396,6 +1397,10 @@
             {
               "id": "lifecycle-notifications",
               "label": "Frist, Rückzug, Ergebnis und direkte Antwort melden"
+            },
+            {
+              "id": "notification-metrics",
+              "label": "Zustellungen, Abschaltquote, Antwortzeit, Anstupser und Trigger-Fehler messen"
             },
             {
               "id": "notification-actions",

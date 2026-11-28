@@ -3799,6 +3799,48 @@ export type Database = {
         }
         Relationships: []
       }
+      decision_notification_trigger_errors: {
+        Row: {
+          created_at: string
+          decision_id: string | null
+          id: string
+          message: string
+          source: string
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          decision_id?: string | null
+          id?: string
+          message: string
+          source: string
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          decision_id?: string | null
+          id?: string
+          message?: string
+          source?: string
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_notification_trigger_errors_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "task_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decision_notification_trigger_errors_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decision_invitation_dispatches: {
         Row: {
           attempts: number
@@ -19281,6 +19323,8 @@ export type Database = {
       }
       decision_digest_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_invitation_dispatch_selftest: { Args: { p_tenant: string }; Returns: Json }
+      decision_notification_metrics_selftest: { Args: { p_tenant: string }; Returns: Json }
+      notification_metrics: { Args: { _tenant_id: string; _days?: number }; Returns: Json }
       decision_notification_actions_selftest: { Args: { p_tenant: string }; Returns: Json }
       respond_to_decision: {
         Args: { _decision_id: string; _response_type: string }

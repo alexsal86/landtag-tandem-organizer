@@ -2,13 +2,13 @@
 
 _Auto-generiert mit `npm run update:feature-catalog` aus den Fremdschlüsseln in `src/integrations/supabase/types.ts`. Nicht von Hand bearbeiten._
 
-365 Tabellen, 506 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
+366 Tabellen, 508 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
 
 ## Zentrale Tabellen
 
 Tabellen mit mindestens drei eingehenden Verweisen.
 
-### `tenants` — 147 eingehende Verweise
+### `tenants` — 148 eingehende Verweise
 
 | Von | Spalte |
 |---|---|
@@ -49,6 +49,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `day_slips` | `tenant_id` |
 | `decision_archive_settings` | `tenant_id` |
 | `decision_invitation_dispatches` | `tenant_id` |
+| `decision_notification_trigger_errors` | `tenant_id` |
 | `distribution_lists` | `tenant_id` |
 | `district_notes` | `tenant_id` |
 | `document_categories` | `tenant_id` |
@@ -252,6 +253,24 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `task_topics` | `task_id` |
 | `tasks` | `parent_task_id` |
 
+### `task_decisions` — 13 eingehende Verweise
+
+| Von | Spalte |
+|---|---|
+| `dashboard_decision_nudges` | `decision_id` |
+| `decision_invitation_dispatches` | `decision_id` |
+| `decision_matrix_messages` | `decision_id` |
+| `decision_notification_trigger_errors` | `decision_id` |
+| `quick_notes` | `decision_id` |
+| `routine_package_steps` | `approval_id` |
+| `task_decision_attachments` | `decision_id` |
+| `task_decision_comments` | `decision_id` |
+| `task_decision_participants` | `decision_id` |
+| `task_decision_response_history` | `decision_id` |
+| `task_decision_responses` | `decision_id` |
+| `task_decision_topics` | `decision_id` |
+| `task_decision_vote_effects` | `decision_id` |
+
 ### `appointments` — 12 eingehende Verweise
 
 | Von | Spalte |
@@ -319,23 +338,6 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `starred_appointments` | `meeting_id` |
 | `task_decisions` | `meeting_id` |
 | `tasks` | `meeting_id` |
-
-### `task_decisions` — 12 eingehende Verweise
-
-| Von | Spalte |
-|---|---|
-| `dashboard_decision_nudges` | `decision_id` |
-| `decision_invitation_dispatches` | `decision_id` |
-| `decision_matrix_messages` | `decision_id` |
-| `quick_notes` | `decision_id` |
-| `routine_package_steps` | `approval_id` |
-| `task_decision_attachments` | `decision_id` |
-| `task_decision_comments` | `decision_id` |
-| `task_decision_participants` | `decision_id` |
-| `task_decision_response_history` | `decision_id` |
-| `task_decision_responses` | `decision_id` |
-| `task_decision_topics` | `decision_id` |
-| `task_decision_vote_effects` | `decision_id` |
 
 ### `case_items` — 9 eingehende Verweise
 
@@ -744,6 +746,8 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `decision_invitation_dispatches` | `tenant_id` | `tenants` |
 | `decision_matrix_messages` | `participant_id` | `task_decision_participants` |
 | `decision_matrix_messages` | `decision_id` | `task_decisions` |
+| `decision_notification_trigger_errors` | `decision_id` | `task_decisions` |
+| `decision_notification_trigger_errors` | `tenant_id` | `tenants` |
 | `distribution_list_members` | `contact_id` | `contacts` |
 | `distribution_list_members` | `distribution_list_id` | `distribution_lists` |
 | `distribution_lists` | `tenant_id` | `tenants` |

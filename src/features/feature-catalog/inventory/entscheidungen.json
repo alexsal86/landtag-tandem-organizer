@@ -312,6 +312,50 @@
       ]
     },
     {
+      "id": "decisions.notification-metrics",
+      "subarea": "Meldungen",
+      "name": "Wirkung der Entscheidungs-Meldungen messen",
+      "description": "Liefert je Mandant Kanalzustellungen (In-App, Push, E-Mail), Abschaltquoten je Entscheidungstyp, Zeit bis zur ersten Antwort, Anstupser-Wirkung innerhalb von 24 Stunden sowie Trigger-Fehlerquote und Alarm bei Ausnahmen der letzten 24 Stunden.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/migrations/20261128223000_decision_notification_metrics.sql",
+        "supabase/migrations/20261128224000_decision_notification_metrics_selftest.sql",
+        "src/features/selftest/scenarios/decision-lifecycle.ts"
+      ],
+      "rpcs": [
+        "notification_metrics",
+        "decision_notification_metrics_selftest"
+      ],
+      "tables": [
+        "notifications",
+        "notification_types",
+        "user_notification_settings",
+        "task_decision_participants",
+        "task_decision_responses",
+        "dashboard_decision_nudges",
+        "decision_invitation_dispatches",
+        "decision_notification_trigger_errors"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "docs": [
+        "docs/decision-notification-metrics.md"
+      ],
+      "limitations": [
+        "Es gibt noch keine Kennzahlenansicht in der Oberfläche; die Werte sind über die RPC abrufbar. Echte Push-/E-Mail-Zustellung und Cron-Läufe sind nicht ausgeführt."
+      ]
+    },
+    {
       "id": "decisions.notification-actions",
       "subarea": "Meldungen",
       "name": "Meldungen bedienbar machen",

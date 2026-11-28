@@ -494,6 +494,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `task_snoozes` | arbeitsbereich, aufgaben |
 | `task_statuses` | aufgaben, verwaltung |
 | `tenants` | organisation, verwaltung |
+| `user_notification_settings` | arbeitsbereich, entscheidungen |
 | `user_sessions` | arbeitsbereich, verwaltung |
 | `user_tenant_memberships` | arbeitsbereich, verwaltung |
 | `workflow_runs` | automation, verwaltung |
