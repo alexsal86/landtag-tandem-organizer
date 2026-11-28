@@ -1063,6 +1063,13 @@
       "area": "entscheidungen"
     }
   ],
+  "decision_notification_preferences": [
+    {
+      "id": "decisions.delivery-preferences",
+      "name": "Persönliche Zustellfrequenz und Ruhezeiten",
+      "area": "entscheidungen"
+    }
+  ],
   "decision_notification_trigger_errors": [
     {
       "id": "decisions.notification-metrics",
@@ -2830,6 +2837,11 @@
       "area": "vorgaenge"
     },
     {
+      "id": "decisions.delivery-preferences",
+      "name": "Persönliche Zustellfrequenz und Ruhezeiten",
+      "area": "entscheidungen"
+    },
+    {
       "id": "decisions.notification-digest",
       "name": "Gebündelte Entscheidungs-Meldungen",
       "area": "entscheidungen"
@@ -4150,6 +4162,11 @@
     }
   ],
   "user_notification_settings": [
+    {
+      "id": "decisions.delivery-preferences",
+      "name": "Persönliche Zustellfrequenz und Ruhezeiten",
+      "area": "entscheidungen"
+    },
     {
       "id": "decisions.notification-metrics",
       "name": "Wirkung der Entscheidungs-Meldungen messen",

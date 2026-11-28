@@ -1335,6 +1335,7 @@
             "decisions.change-vote",
             "decisions.comments",
             "decisions.create",
+            "decisions.delivery-preferences",
             "decisions.notification-actions",
             "decisions.notification-digest",
             "decisions.notification-metrics",
@@ -1397,6 +1398,10 @@
             {
               "id": "lifecycle-notifications",
               "label": "Frist, Rückzug, Ergebnis und direkte Antwort melden"
+            },
+            {
+              "id": "delivery-preferences",
+              "label": "Persönliche Zustellfrequenz und Ruhezeiten respektieren"
             },
             {
               "id": "notification-metrics",

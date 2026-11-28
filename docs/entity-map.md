@@ -2,13 +2,13 @@
 
 _Auto-generiert mit `npm run update:feature-catalog` aus den Fremdschlüsseln in `src/integrations/supabase/types.ts`. Nicht von Hand bearbeiten._
 
-366 Tabellen, 508 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
+367 Tabellen, 509 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
 
 ## Zentrale Tabellen
 
 Tabellen mit mindestens drei eingehenden Verweisen.
 
-### `tenants` — 148 eingehende Verweise
+### `tenants` — 149 eingehende Verweise
 
 | Von | Spalte |
 |---|---|
@@ -49,6 +49,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `day_slips` | `tenant_id` |
 | `decision_archive_settings` | `tenant_id` |
 | `decision_invitation_dispatches` | `tenant_id` |
+| `decision_notification_preferences` | `tenant_id` |
 | `decision_notification_trigger_errors` | `tenant_id` |
 | `distribution_lists` | `tenant_id` |
 | `district_notes` | `tenant_id` |
@@ -746,6 +747,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `decision_invitation_dispatches` | `tenant_id` | `tenants` |
 | `decision_matrix_messages` | `participant_id` | `task_decision_participants` |
 | `decision_matrix_messages` | `decision_id` | `task_decisions` |
+| `decision_notification_preferences` | `tenant_id` | `tenants` |
 | `decision_notification_trigger_errors` | `decision_id` | `task_decisions` |
 | `decision_notification_trigger_errors` | `tenant_id` | `tenants` |
 | `distribution_list_members` | `contact_id` | `contacts` |

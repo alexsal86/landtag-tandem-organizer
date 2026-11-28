@@ -3799,6 +3799,35 @@ export type Database = {
         }
         Relationships: []
       }
+      decision_notification_preferences: {
+        Row: {
+          delivery_mode: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          delivery_mode?: string
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          delivery_mode?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_notification_preferences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decision_notification_trigger_errors: {
         Row: {
           created_at: string
@@ -19323,7 +19352,16 @@ export type Database = {
       }
       decision_digest_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_invitation_dispatch_selftest: { Args: { p_tenant: string }; Returns: Json }
+      decision_delivery_preference_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_notification_metrics_selftest: { Args: { p_tenant: string }; Returns: Json }
+      decision_push_allowed: {
+        Args: { _user_id: string; _tenant_id: string; _type_name: string; _at?: string }
+        Returns: boolean
+      }
+      set_decision_notification_preference: {
+        Args: { _tenant_id: string; _delivery_mode: string }
+        Returns: Json
+      }
       notification_metrics: { Args: { _tenant_id: string; _days?: number }; Returns: Json }
       decision_notification_actions_selftest: { Args: { p_tenant: string }; Returns: Json }
       respond_to_decision: {

@@ -71,6 +71,7 @@
   "decision_archive_settings",
   "decision_email_templates",
   "decision_invitation_dispatches",
+  "decision_notification_preferences",
   "decision_notification_trigger_errors",
   "decision_matrix_messages",
   "default_appointment_guests",

@@ -6,8 +6,8 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **14** in **8** Unterbereichen
-- implementiert: **14**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **15** in **8** Unterbereichen
+- implementiert: **15**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **3**
 - ohne Dokumentationsverweis: **9**
 
@@ -27,6 +27,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `decisions.matrix` Entscheidungen über Matrix beantworten | Integration | integration | implementiert | systemseitig | kein Test |
 | `decisions.notification-digest` Gebündelte Entscheidungs-Meldungen | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.notification-actions` Meldungen bedienbar machen | Meldungen | fachlich | implementiert | UI | Selbsttest |
+| `decisions.delivery-preferences` Persönliche Zustellfrequenz und Ruhezeiten | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.notification-metrics` Wirkung der Entscheidungs-Meldungen messen | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.participants` Teilnehmende und Antwort-Token verwalten | Teilnehmende | fachlich | implementiert | rollenabhängig | Selbsttest |
 
@@ -47,7 +48,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`dashboard_decision_nudges`, `decision_archive_settings`, `decision_email_templates`, `decision_invitation_dispatches`, `decision_matrix_messages`, `decision_notification_trigger_errors`, `email_logs`, `notification_types`, `notifications`, `task_decision_attachments`, `task_decision_comment_reactions`, `task_decision_comments`, `task_decision_participants`, `task_decision_response_history`, `task_decision_responses`, `task_decision_topics`, `task_decision_vote_effects`, `task_decisions`, `tasks`, `tenant_notification_settings`, `user_notification_settings`
+`dashboard_decision_nudges`, `decision_archive_settings`, `decision_email_templates`, `decision_invitation_dispatches`, `decision_matrix_messages`, `decision_notification_preferences`, `decision_notification_trigger_errors`, `email_logs`, `notification_types`, `notifications`, `task_decision_attachments`, `task_decision_comment_reactions`, `task_decision_comments`, `task_decision_participants`, `task_decision_response_history`, `task_decision_responses`, `task_decision_topics`, `task_decision_vote_effects`, `task_decisions`, `tasks`, `tenant_notification_settings`, `user_notification_settings`
 
 ## Selbsttest-Szenarien
 
@@ -75,6 +76,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `notifications` | Meldungen entstehen im Mandanten der Entscheidung | workflow | — |
 | `decision-lifecycle` | `invitation-dispatch` | Einladungsversand wird serverseitig eingestellt und übernommen | workflow | — |
 | `decision-lifecycle` | `lifecycle-notifications` | Frist, Rückzug, Ergebnis und direkte Antwort melden | workflow | — |
+| `decision-lifecycle` | `delivery-preferences` | Persönliche Zustellfrequenz und Ruhezeiten respektieren | workflow | — |
 | `decision-lifecycle` | `notification-metrics` | Zustellungen, Abschaltquote, Antwortzeit, Anstupser und Trigger-Fehler messen | workflow | — |
 | `decision-lifecycle` | `notification-actions` | Aus der Meldung abstimmen und Antwort aktualisieren | workflow | — |
 | `decision-lifecycle` | `digest` | Meldungen werden gebündelt und nur der Digest wird gepusht | workflow | — |
@@ -381,6 +383,43 @@ Fasst offene Kommentar-, Antwort- und Reaktionsmeldungen sowie Ergebnismeldungen
 **Bekannte Einschränkungen**
 
 - Nicht geprüft: echter Cron-Lauf, tatsächlicher Push-Versand, parallele Flush-Läufe und eine Oberfläche für die Mandanteneinstellung. Die Einstellung ist derzeit nur über set_decision_notification_timing erreichbar. Der Ersteller erhält kein Ergebnis-Digest; Frist und Rückzug werden bewusst nicht gebündelt.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `decisions.delivery-preferences` — Persönliche Zustellfrequenz und Ruhezeiten
+Erlaubt je Person und Mandant sofort, gebündelt oder aus; Ruhezeiten blockieren Pushes, kritische Frist- und Rückzugsmeldungen gehen weiterhin sofort durch. Der Digest bündelt nur für Personen mit gebündelter Zustellung.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `set_decision_notification_preference`, `decision_push_allowed`, `decision_delivery_preference_selftest`
+- **Tabellen:** `decision_notification_preferences`, `user_notification_settings`, `notifications`
+- **Abhängigkeiten:** —
+- **Selbsttests:** `decision-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/decision-delivery-preferences.md`
+
+**Nachweise im Quellcode**
+
+- supabase/migrations/20261128229000_decision_delivery_preferences.sql
+- supabase/migrations/20261128230000_decision_delivery_preferences_selftest.sql
+- src/features/selftest/scenarios/decision-lifecycle.ts
+
+**Bekannte Einschränkungen**
+
+- Echter Push-Versand und die Einstellungsoberfläche sind nicht geprüft; die Frequenz ist über die RPC erreichbar, eine eigene Karte in den Benachrichtigungseinstellungen fehlt noch.
 
 **Offene Prüfpunkte**
 

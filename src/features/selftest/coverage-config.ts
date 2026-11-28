@@ -32,6 +32,7 @@ export const COVERAGE_EXCEPTIONS: CoverageExceptionGroup[] = [
       "bulk_action_audit",
       "data_lint_findings",
       "decision_matrix_messages",
+      "decision_notification_preferences",
       "decision_notification_trigger_errors",
       "edge_function_cache",
       "egress_anomalies",

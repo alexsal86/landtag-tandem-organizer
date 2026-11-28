@@ -451,6 +451,21 @@ export const decisionLifecycleScenario: TestScenario = {
       },
     },
     {
+      id: "delivery-preferences", label: "Persönliche Zustellfrequenz und Ruhezeiten respektieren", kind: "workflow",
+      run: async (ctx) => {
+        const { data, error } = await supabase.rpc("decision_delivery_preference_selftest", { p_tenant: ctx.tenantId });
+        if (error) return { ok: false, message: describeError(error) };
+        const report = data as { ok?: boolean; message?: string; skipped?: string; checks?: Record<string, unknown> } | null;
+        return {
+          ok: report?.ok === true,
+          message: report?.ok === true
+            ? "Gebündelt erzeugt einen Digest, aus unterdrückt unkritische Meldungen, Ruhezeiten blockieren den Push und Friständerungen gehen weiterhin sofort durch."
+            : (report?.skipped ?? report?.message ?? "Zustellfrequenz-Selbsttest fehlgeschlagen."),
+          details: report?.checks,
+        };
+      },
+    },
+    {
       id: "notification-metrics", label: "Zustellungen, Abschaltquote, Antwortzeit, Anstupser und Trigger-Fehler messen", kind: "workflow",
       run: async (ctx) => {
         const { data, error } = await supabase.rpc("decision_notification_metrics_selftest", { p_tenant: ctx.tenantId });
