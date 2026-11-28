@@ -37,6 +37,7 @@
         "create_work_decision",
         "decision_notification_selftest",
         "decision_invitation_dispatch_selftest",
+        "request_decision_email_invites",
         "enqueue_decision_invitation_dispatch",
         "claim_decision_invitation_dispatches",
         "finish_decision_invitation_dispatch"

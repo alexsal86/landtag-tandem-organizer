@@ -131,7 +131,7 @@ Erstellt eine Entscheidung mit Optionen, Frist, Teilnehmenden, Anhängen und Bez
 - **Services:** —
 - **Hooks:** `src/hooks/useMyWorkDecisionsData.ts`, `src/hooks/useDefaultDecisionSettings.ts`
 - **Edge Functions:** `send-decision-email`, `dispatch-decision-invitations`
-- **Datenbankfunktionen:** `create_work_decision`, `decision_notification_selftest`, `decision_invitation_dispatch_selftest`, `enqueue_decision_invitation_dispatch`, `claim_decision_invitation_dispatches`, `finish_decision_invitation_dispatch`
+- **Datenbankfunktionen:** `create_work_decision`, `decision_notification_selftest`, `decision_invitation_dispatch_selftest`, `request_decision_email_invites`, `enqueue_decision_invitation_dispatch`, `claim_decision_invitation_dispatches`, `finish_decision_invitation_dispatch`
 - **Tabellen:** `task_decisions`, `task_decision_participants`, `task_decision_topics`, `task_decision_attachments`, `decision_invitation_dispatches`
 - **Abhängigkeiten:** —
 - **Selbsttests:** `decision-lifecycle`

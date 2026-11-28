@@ -36,9 +36,30 @@ const handler = async (req: Request): Promise<Response> => {
     return forbiddenResponse("Nur der Scheduler darf Entscheidungs-Einladungen versenden.");
   }
 
+  // Optional: Ist das Secret gesetzt, wird es mitgeschickt und vom Renderer
+  // verlangt. Fehlt es, bleibt der Versand über die Service-Role nutzbar, statt
+  // alle Einladungen stillzulegen.
   const dispatchSecret = (Deno.env.get("DECISION_DISPATCH_SECRET") ?? "").trim();
-  if (!dispatchSecret) {
-    return jsonResponse({ success: false, error: "DECISION_DISPATCH_SECRET fehlt" }, 503);
+
+  const toOrigin = (value: string | null | undefined): string => {
+    if (!value) return "";
+    try {
+      return new URL(value).origin;
+    } catch {
+      return "";
+    }
+  };
+  const appBaseUrl = ["PUBLIC_APP_URL", "APP_URL", "SITE_URL", "VITE_PUBLIC_APP_URL"]
+    .map((key) => toOrigin(Deno.env.get(key)))
+    .find(Boolean) ?? "";
+
+  if (!appBaseUrl) {
+    // Ohne gültige App-URL würden die Antwortlinks ins Leere zeigen. Die Zeilen
+    // bleiben pending und werden beim nächsten Lauf erneut versucht.
+    return jsonResponse({
+      success: false,
+      error: "PUBLIC_APP_URL/APP_URL/SITE_URL fehlt; Einladungen bleiben pending",
+    }, 503);
   }
 
   const supabase = createServiceRoleClient();
@@ -87,12 +108,13 @@ const handler = async (req: Request): Promise<Response> => {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${serviceKey}`,
-          "x-decision-dispatch-secret": dispatchSecret,
+          ...(dispatchSecret ? { "x-decision-dispatch-secret": dispatchSecret } : {}),
         },
         body: JSON.stringify({
           decisionId: row.decision_id,
           participantIds: [row.user_id],
           tenant_id: row.tenant_id,
+          app_base_url: appBaseUrl,
         }),
       });
 

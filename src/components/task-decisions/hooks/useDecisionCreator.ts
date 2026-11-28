@@ -375,12 +375,10 @@ export const useDecisionCreator = ({
       // Absicht festgehalten, damit auch später hinzugefügte Teilnehmende erfasst sind.
       if (sendByEmail) {
         try {
-          const { error: inviteError } = await supabase
-            .from("task_decisions")
-            .update({ invite_via_email: true })
-            .eq("id", decision.id);
+          const { data: released, error: inviteError } = await supabase
+            .rpc("request_decision_email_invites", { _decision_id: decision.id });
 
-          if (inviteError) {
+          if (inviteError || released !== true) {
             debugConsole.error("Einladungsversand konnte nicht freigegeben werden:", inviteError);
             notify.error("E-Mail-Fehler", {
               description: `Einladungen konnten nicht vorbereitet werden: ${inviteError.message}`

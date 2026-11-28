@@ -287,12 +287,10 @@ export function NoteDecisionCreator({
       // E-Mail-Versand hängt an derselben Outbox: Hier wird nur die Absicht des
       // Erstellers festgehalten, zugestellt wird serverseitig.
       if (sendByEmail) {
-        const { error: inviteError } = await supabase
-          .from("task_decisions")
-          .update({ invite_via_email: true })
-          .eq("id", decision.id);
-        if (inviteError) {
-          debugConsole.warn("Einladungsversand konnte nicht freigegeben werden:", inviteError);
+        const { data: released, error: inviteError } = await supabase
+          .rpc("request_decision_email_invites", { _decision_id: decision.id });
+        if (inviteError || released !== true) {
+          debugConsole.warn("Einladungsversand konnte nicht freigegeben werden:", inviteError ?? released);
         }
       }
 

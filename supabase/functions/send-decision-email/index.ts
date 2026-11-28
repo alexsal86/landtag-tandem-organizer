@@ -36,10 +36,18 @@ const handler = async (req: Request): Promise<Response> => {
     // Verhalten) oder der Cron-Worker dispatch-decision-invitations übernimmt eine
     // Outbox-Zeile. Der interne Weg verlangt Service-Role UND ein gemeinsames
     // Geheimnis; ohne gesetztes Geheimnis bleibt er abgeschaltet.
+    // Das Secret ist eine zusätzliche Absicherung, keine Voraussetzung: Der
+    // Service-Role-Aufruf stammt aus dem Cron-Worker, der die Zeilen bereits
+    // atomar aus der Outbox übernommen hat. Ist das Secret gesetzt, muss es passen;
+    // fehlt es, bleibt der interne Weg trotzdem nutzbar, statt den gesamten
+    // Einladungsversand stillzulegen.
     const internalSecret = (Deno.env.get("DECISION_DISPATCH_SECRET") ?? "").trim();
-    const isInternalDispatch = internalSecret.length > 0
-      && requireServiceRole(req)
-      && (req.headers.get("x-decision-dispatch-secret") ?? "") === internalSecret;
+    const providedSecret = (req.headers.get("x-decision-dispatch-secret") ?? "").trim();
+    const isServiceRole = requireServiceRole(req);
+    // Ohne Header bleibt der Dienst nutzbar; ein mitgeschicktes Secret muss passen.
+    const secretMatches = providedSecret.length === 0
+      || (internalSecret.length > 0 && providedSecret === internalSecret);
+    const isInternalDispatch = isServiceRole && secretMatches;
 
     let effectiveTenantId: string;
     let authorizedCreatorId: string | null = null;
@@ -170,6 +178,26 @@ const handler = async (req: Request): Promise<Response> => {
       creatorName = creatorProfile?.display_name || 'Ein Teammitglied';
     }
 
+    // Interne Aufrufe kommen ohne Origin/Referer; die App-URL muss dann explizit
+    // mitgegeben werden, sonst würden die Antwortlinks auf den Supabase-Host zeigen.
+    let internalAppBaseUrl = "";
+    if (isInternalDispatch) {
+      try {
+        const parsed = new URL(String(requestBody.app_base_url ?? ""));
+        if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+          internalAppBaseUrl = parsed.origin;
+        }
+      } catch {
+        internalAppBaseUrl = "";
+      }
+      if (!internalAppBaseUrl) {
+        return new Response(
+          JSON.stringify({ error: 'app_base_url fehlt oder ist ungültig' }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        );
+      }
+    }
+
     const emailResults = [];
 
     // Send emails to participants
@@ -231,8 +259,8 @@ const handler = async (req: Request): Promise<Response> => {
         const participantEmail = authUserData.user.email;
         const participantToken = participant.token;
 
-        // Get current domain dynamically
-        const domain = requireAppBaseUrl(req);
+        // Intern kommt die URL explizit aus dem Worker, sonst aus der Anfrage.
+        const domain = isInternalDispatch ? internalAppBaseUrl : requireAppBaseUrl(req);
 
         // Generate response URLs
         const baseUrl = `${domain}/decision-response/${participant.id}?token=${participantToken}`;
