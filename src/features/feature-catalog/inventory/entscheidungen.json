@@ -9,7 +9,7 @@
       "id": "decisions.create",
       "subarea": "Anlegen",
       "name": "Entscheidung anlegen",
-      "description": "Erstellt eine Entscheidung mit Optionen, Frist, Teilnehmenden, Anhängen und Bezug zu Aufgabe, Vorgang oder Meeting.",
+      "description": "Erstellt eine Entscheidung mit Optionen, Frist, Teilnehmenden, Anhängen und Bezug zu Aufgabe, Vorgang oder Meeting. Die Anfrage an Teilnehmende entsteht per Trigger im Mandanten der Entscheidung.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
@@ -17,7 +17,8 @@
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/pages/Decisions.tsx",
-        "src/features/selftest/scenarios/decision-lifecycle.ts"
+        "src/features/selftest/scenarios/decision-lifecycle.ts",
+        "supabase/migrations/20261128210000_decision_notification_tenant.sql"
       ],
       "routes": [
         "/decisions"
@@ -31,7 +32,8 @@
         "src/hooks/useDefaultDecisionSettings.ts"
       ],
       "rpcs": [
-        "create_work_decision"
+        "create_work_decision",
+        "decision_notification_selftest"
       ],
       "tables": [
         "task_decisions",
@@ -48,7 +50,8 @@
         "decision-lifecycle"
       ],
       "docs": [
-        "docs/my-work-decisions-button-flowchart.md"
+        "docs/my-work-decisions-button-flowchart.md",
+        "docs/decision-notifications.md"
       ]
     },
     {
@@ -99,7 +102,7 @@
       "id": "decisions.vote",
       "subarea": "Abstimmung",
       "name": "Abstimmen",
-      "description": "Nimmt Ja/Nein/Enthaltung an, protokolliert die Antwort und stößt Benachrichtigungen und Aufgabenfolgen an.",
+      "description": "Nimmt Ja/Nein/Enthaltung an, protokolliert die Antwort und stößt Aufgabenfolgen an. Abschluss und Ersteller-Antwort meldet ein Trigger im Mandanten der Entscheidung.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
@@ -165,7 +168,7 @@
       "id": "decisions.comments",
       "subarea": "Abstimmung",
       "name": "Kommentare und Reaktionen",
-      "description": "Ermöglicht Kommentare zu Entscheidungen, Antworten auf Kommentare und Emoji-Reaktionen.",
+      "description": "Ermöglicht Kommentare zu Entscheidungen, Antworten auf Kommentare und Emoji-Reaktionen. Kommentar- und Reaktionsmeldungen entstehen per Trigger im Mandanten der Entscheidung; je Empfänger, Kommentar und Emoji höchstens eine Reaktionsmeldung in fünf Minuten.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
@@ -173,7 +176,8 @@
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/hooks/useDecisionComments.ts",
-        "src/components/shared/DecisionResponseSummary.tsx"
+        "src/components/shared/DecisionResponseSummary.tsx",
+        "supabase/migrations/20261128210000_decision_notification_tenant.sql"
       ],
       "components": [
         "src/components/shared/DecisionResponseSummary.tsx"
@@ -192,14 +196,15 @@
       ],
       "docs": [
         "docs/task-decision-reactions-rollout.md",
-        "docs/emoji-reactions-dod-v1.md"
+        "docs/emoji-reactions-dod-v1.md",
+        "docs/decision-notifications.md"
       ],
       "dependsOn": ["decisions.create"],
       "scenarios": [
         "decision-lifecycle"
       ],
       "limitations": [
-        "Geprüft sind Anlegen, Antwort, Reaktion samt Emoji-Allowlist und Entfernen. Das Bearbeiten eigener Kommentare und die Sichtbarkeitsgrenze für Nicht-Beteiligte haben keinen Schritt."
+        "Geprüft sind Anlegen, Antwort, Reaktion samt Emoji-Allowlist, Entfernen und die Fünf-Minuten-Sperre gegen erneutes Melden desselben Emojis. Das Ablaufen der Sperrzeit, das Bearbeiten eigener Kommentare und die Sichtbarkeitsgrenze für Nicht-Beteiligte haben keinen Schritt."
       ]
     },
     {

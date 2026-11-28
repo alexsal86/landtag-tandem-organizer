@@ -286,19 +286,7 @@ export function NoteDecisionCreator({
       // Send notifications
       if (sendByEmail || sendViaMatrix) {
         for (const userId of selectedUsers) {
-          // Create notification
-          const { error: notificationError } = await supabase.rpc("create_notification", {
-            user_id_param: userId,
-            type_name: "task_decision_request",
-            title_param: "Neue Entscheidungsanfrage",
-            message_param: `${profiles.find(p => p.user_id === user.id)?.display_name || 'Jemand'} bittet um Ihre Entscheidung: "${title}"`,
-            data_param: JSON.stringify({ decision_id: decision.id, link: `/mywork?tab=decisions` }),
-            priority_param: 'medium'
-          });
-
-          if (notificationError) {
-            debugConsole.warn('Notification error for user:', userId, notificationError);
-          }
+          // Die In-App-Anfrage meldet der Trigger auf task_decision_participants.
 
           // Get participant token for email
           if (sendByEmail) {

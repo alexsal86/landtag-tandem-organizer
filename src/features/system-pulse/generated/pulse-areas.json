@@ -1306,7 +1306,8 @@
             "Anhang-Metadaten hängen an der Entscheidung, sind für Teilnehmende lesbar und wieder entfernbar (ohne Datei-Upload)",
             "Kommentar und Antwort werden gespeichert; Emoji-Reaktionen folgen der Allowlist, sind je Person eindeutig und wieder entfernbar",
             "Das Anmahnen speichert den Eintrag mit Absender und Notiz und weist die zweite Mahnung innerhalb von 24 Stunden ab",
-            "Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen"
+            "Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen",
+            "Anfrage-, Kommentar-, Reaktions-, Ersteller-Antwort- und Abschlussmeldung entstehen im Mandanten der Entscheidung"
           ],
           "tables": [
             "task_decisions",
@@ -1316,7 +1317,8 @@
             "task_decision_attachments",
             "task_decision_comments",
             "task_decision_comment_reactions",
-            "dashboard_decision_nudges"
+            "dashboard_decision_nudges",
+            "notifications"
           ],
           "features": [
             "decisions.attachments",
@@ -1367,6 +1369,10 @@
               "label": "Kommentar, Antwort und Emoji-Reaktion speichern und entfernen"
             },
             {
+              "id": "notifications",
+              "label": "Meldungen entstehen im Mandanten der Entscheidung"
+            },
+            {
               "id": "set-open",
               "label": "Status auf 'open'"
             },
@@ -1384,7 +1390,7 @@
             },
             {
               "id": "nudge-open-decision",
-              "label": "Offene Entscheidung anmahnen: Eintrag und 24-Stunden-Sperre"
+              "label": "Offene Entscheidung anmahnen: Eintrag, Meldung und 24-Stunden-Sperre"
             }
           ]
         }

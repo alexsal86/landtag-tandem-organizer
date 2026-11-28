@@ -21,6 +21,7 @@ export const decisionLifecycleScenario: TestScenario = {
     "task_decision_comments",
     "task_decision_comment_reactions",
     "dashboard_decision_nudges",
+    "notifications",
   ],
   features: ["decisions"],
   checks: [
@@ -30,6 +31,7 @@ export const decisionLifecycleScenario: TestScenario = {
     "Kommentar und Antwort werden gespeichert; Emoji-Reaktionen folgen der Allowlist, sind je Person eindeutig und wieder entfernbar",
     "Das Anmahnen speichert den Eintrag mit Absender und Notiz und weist die zweite Mahnung innerhalb von 24 Stunden ab",
     "Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen",
+    "Anfrage-, Kommentar-, Reaktions-, Ersteller-Antwort- und Abschlussmeldung entstehen im Mandanten der Entscheidung",
   ],
   limitations: [
     "Der Erfolgspfad des Anmahmens läuft über decision_nudge_selftest und wird vollständig zurückgerollt. Er ist nur prüfbar, wenn das Büro ein zweites aktives Abgeordnetenkonto hat und das angemeldete Konto anmahnen darf; sonst belegt der Schritt ausdrücklich nur die Abweisung.",
@@ -44,6 +46,7 @@ export const decisionLifecycleScenario: TestScenario = {
     { table: "task_decision_comments", columns: ["decision_id", "user_id", "parent_id", "content"] },
     { table: "task_decision_comment_reactions", columns: ["comment_id", "user_id", "emoji"] },
     { table: "dashboard_decision_nudges", columns: ["decision_id", "tenant_id", "nudged_by", "note"] },
+    { table: "notifications", columns: ["tenant_id", "user_id", "notification_type_id", "title", "message", "data", "priority", "is_read"] },
   ],
   steps: [
     {
@@ -310,6 +313,32 @@ export const decisionLifecycleScenario: TestScenario = {
       },
     },
     {
+      id: "notifications", label: "Meldungen entstehen im Mandanten der Entscheidung", kind: "workflow",
+      run: async (ctx) => {
+        const { data, error } = await supabase.rpc("decision_notification_selftest", { p_tenant: ctx.tenantId });
+        if (error) return { ok: false, message: describeError(error) };
+        const result = data as { ok: boolean; skipped?: string; delivered?: Record<string, number>; message?: string };
+        if (!result?.ok) return { ok: false, message: result?.message ?? "Selbsttest fehlgeschlagen" };
+
+        // Meldungen aus den Triggern dieses Laufs gehören dem angemeldeten Konto und
+        // werden wie die übrigen Testdaten aufgeräumt.
+        const { data: created } = await supabase
+          .from("notifications")
+          .select("id")
+          .eq("tenant_id", ctx.tenantId)
+          .filter("data->>decision_id", "eq", ctx.data.decisionId as string);
+        for (const row of created ?? []) {
+          ctx.trackRecord({ table: "notifications", id: row.id });
+        }
+
+        return {
+          ok: true,
+          message: result.skipped ?? `Anfrage, Kommentar, Reaktion, Ersteller-Antwort und Abschluss wurden im Mandanten der Entscheidung zugestellt (${JSON.stringify(result.delivered)}).`,
+          details: result.delivered,
+        };
+      },
+    },
+    {
       id: "set-open",
       label: "Status auf 'open'",
       run: async (ctx) => {
@@ -363,7 +392,7 @@ export const decisionLifecycleScenario: TestScenario = {
       },
     },
     {
-      id: "nudge-open-decision", label: "Offene Entscheidung anmahnen: Eintrag und 24-Stunden-Sperre", kind: "workflow",
+      id: "nudge-open-decision", label: "Offene Entscheidung anmahnen: Eintrag, Meldung und 24-Stunden-Sperre", kind: "workflow",
       run: async (ctx) => {
         const response = await supabase.rpc("decision_nudge_selftest", { p_tenant: ctx.tenantId });
         if (response.error) return { ok: false, message: describeError(response.error) };
@@ -389,7 +418,9 @@ export const decisionLifecycleScenario: TestScenario = {
         return {
           ok: report.ok === true,
           message: report.ok === true
-            ? "Der echte Anstups-RPC hat gespeichert und die zweite Mahnung innerhalb von 24 Stunden abgewiesen; alle Schreibzugriffe wurden zurückgerollt."
+            ? (details.notification_suppressed_by_settings === true
+              ? "Der echte Anstups-RPC hat gespeichert und die zweite Mahnung innerhalb von 24 Stunden abgewiesen; die Meldung ist für diese Person abgeschaltet. Alle Schreibzugriffe wurden zurückgerollt."
+              : "Der echte Anstups-RPC hat gespeichert, die Meldung im Mandanten der Entscheidung zugestellt und die zweite Mahnung innerhalb von 24 Stunden abgewiesen; alle Schreibzugriffe wurden zurückgerollt.")
             : `Anmahnen fehlgeschlagen: ${report.message ?? "unbekannter Grund"}`,
           details,
         };

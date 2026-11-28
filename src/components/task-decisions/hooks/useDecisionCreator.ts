@@ -335,24 +335,8 @@ export const useDecisionCreator = ({
         await saveDecisionTopics(decision.id, selectedTopicIds);
       }
 
-      for (const userId of validSelectedUsers) {
-        const { error: notificationError } = await supabase.rpc("create_notification", {
-          user_id_param: userId,
-          type_name: "task_decision_request",
-          title_param: "Neue Entscheidungsanfrage",
-          message_param: `Sie wurden um eine Entscheidung gebeten: "${title.trim()}"`,
-          data_param: JSON.stringify({
-            decision_id: decision.id,
-            task_id: taskId ?? undefined,
-            decision_title: title.trim(),
-          }),
-          priority_param: "medium",
-        });
-
-        if (notificationError) {
-          debugConsole.error("Error creating notification for user:", userId, notificationError);
-        }
-      }
+      // Die Anfrage meldet der Trigger auf task_decision_participants im Mandanten der
+      // Entscheidung; create_work_decision legt die Teilnehmer mit an.
 
       if (sendViaMatrix) {
         try {

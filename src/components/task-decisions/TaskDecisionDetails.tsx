@@ -354,43 +354,9 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
 
       if (error) throw error;
 
-      if (decision) {
-        const { data: participantsData } = await supabase
-          .from('task_decision_participants')
-          .select('user_id')
-          .eq('decision_id', decisionId);
+            // Kommentar-Meldungen entstehen per Trigger im Mandanten der Entscheidung.
 
-        const notifyUserIds = new Set<string>();
-        if (decision.created_by !== currentUserId) {
-          notifyUserIds.add(decision.created_by);
-        }
 
-        participantsData?.forEach((participant: Record<string, any>) => {
-          if (participant.user_id !== currentUserId) {
-            notifyUserIds.add(participant.user_id);
-          }
-        });
-
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('display_name')
-          .eq('user_id', currentUserId)
-          .single();
-
-        for (const recipientId of notifyUserIds) {
-          await supabase.rpc('create_notification', {
-            user_id_param: recipientId,
-            type_name: 'task_decision_comment_received',
-            title_param: 'Neuer Kommentar',
-            message_param: `${profile?.display_name || 'Jemand'} hat einen Kommentar zu "${decision.title}" hinterlassen.`,
-            data_param: JSON.stringify({
-              decision_id: decisionId,
-              decision_title: decision.title,
-            }),
-            priority_param: 'low',
-          });
-        }
-      }
 
       notify.success('Erfolg', {
         description: 'Diskussionsbeitrag wurde hinzugefügt.'

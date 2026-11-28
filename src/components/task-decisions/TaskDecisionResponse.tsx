@@ -13,7 +13,6 @@ import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { ResponseOption, getColorClasses, getDefaultOptions } from "@/lib/decisionTemplates";
 import { LETTER_NOTIFICATION_TYPES } from '@/utils/letterNotificationTypes';
-import type { DecisionParticipantProfile } from './types/domain';
 import { notify } from "@/lib/notify";
 import { getDecisionRecommendationStyle } from "./recommendationStyle";
 
@@ -21,20 +20,6 @@ interface ResponseSubmitMeta {
   responseType: string;
   color?: string;
 }
-
-type ParticipantProfileLookup = {
-  profiles: Pick<DecisionParticipantProfile, "display_name"> | null;
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
-
-const isParticipantProfileLookup = (value: unknown): value is ParticipantProfileLookup => {
-  if (!isRecord(value) || !('profiles' in value)) return false;
-  const profilesValue = value.profiles;
-  if (profilesValue === null) return true;
-  return isRecord(profilesValue) && (profilesValue.display_name === null || typeof profilesValue.display_name === 'string');
-};
 
 interface TaskDecisionResponseProps {
   decisionId: string;
@@ -233,70 +218,8 @@ export const TaskDecisionResponse = ({
         }
       }
 
-      // Check if all participants have responded
-      const { data: participants } = await supabase
-        .from('task_decision_participants')
-        .select('*')
-        .eq('decision_id', decisionId);
-
-      const { data: responses } = await supabase
-        .from('task_decision_responses')
-        .select('participant_id')
-        .eq('decision_id', decisionId);
-
-      if (participants && responses && participants.length === responses.length) {
-        const { data: decision } = await supabase
-          .from('task_decisions')
-          .select('title, created_by')
-          .eq('id', decisionId)
-          .single();
-
-        if (decision) {
-          await supabase.rpc('create_notification', {
-            user_id_param: decision.created_by,
-            type_name: 'task_decision_completed',
-            title_param: 'Entscheidungsergebnis verfügbar',
-            message_param: `Alle Antworten für "${decision.title}" sind eingegangen.`,
-            data_param: JSON.stringify({
-              decision_id: decisionId,
-              decision_title: decision.title
-            }),
-            priority_param: 'medium'
-          });
-        }
-      }
-
-      if (comment?.trim()) {
-        const { data: decision } = await supabase
-          .from('task_decisions')
-          .select('title, created_by')
-          .eq('id', decisionId)
-          .single();
-
-        if (decision && decision.created_by !== (await supabase.auth.getUser()).data.user?.id) {
-          const { data: participantProfile } = await supabase
-            .from('task_decision_participants')
-            .select('profiles:user_id(display_name)')
-            .eq('id', participantId)
-            .single();
-
-          const participantName = isParticipantProfileLookup(participantProfile)
-            ? (participantProfile.profiles?.display_name || 'Ein Teilnehmer')
-            : 'Ein Teilnehmer';
-
-          await supabase.rpc('create_notification', {
-            user_id_param: decision.created_by,
-            type_name: 'task_decision_comment_received',
-            title_param: 'Neuer Kommentar zu Entscheidungsanfrage',
-            message_param: `${participantName} hat einen Kommentar zu "${decision.title}" hinterlassen.`,
-            data_param: JSON.stringify({
-              decision_id: decisionId,
-              decision_title: decision.title
-            }),
-            priority_param: 'medium'
-          });
-        }
-      }
+      // Abschluss- und Kommentar-Meldungen entstehen per Trigger auf
+      // task_decision_responses im Mandanten der Entscheidung.
 
       const currentUser = (await supabase.auth.getUser()).data.user;
       if (currentUser) {
