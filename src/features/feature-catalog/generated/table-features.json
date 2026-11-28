@@ -1092,6 +1092,13 @@
       "area": "entscheidungen"
     }
   ],
+  "decision_notification_email_dispatches": [
+    {
+      "id": "decisions.notification-email",
+      "name": "Entscheidungs-Meldungen per E-Mail",
+      "area": "entscheidungen"
+    }
+  ],
   "decision_notification_preferences": [
     {
       "id": "decisions.daily-digest",
@@ -1101,6 +1108,11 @@
     {
       "id": "decisions.delivery-preferences",
       "name": "Persönliche Zustellfrequenz und Ruhezeiten",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.notification-email",
+      "name": "Entscheidungs-Meldungen per E-Mail",
       "area": "entscheidungen"
     }
   ],
@@ -2859,6 +2871,11 @@
       "area": "entscheidungen"
     },
     {
+      "id": "decisions.notification-email",
+      "name": "Entscheidungs-Meldungen per E-Mail",
+      "area": "entscheidungen"
+    },
+    {
       "id": "decisions.notification-metrics",
       "name": "Wirkung der Entscheidungs-Meldungen messen",
       "area": "entscheidungen"
@@ -2923,6 +2940,11 @@
     {
       "id": "decisions.notification-digest",
       "name": "Gebündelte Entscheidungs-Meldungen",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.notification-email",
+      "name": "Entscheidungs-Meldungen per E-Mail",
       "area": "entscheidungen"
     },
     {
@@ -4334,6 +4356,11 @@
     {
       "id": "decisions.delivery-preferences",
       "name": "Persönliche Zustellfrequenz und Ruhezeiten",
+      "area": "entscheidungen"
+    },
+    {
+      "id": "decisions.notification-email",
+      "name": "Entscheidungs-Meldungen per E-Mail",
       "area": "entscheidungen"
     },
     {

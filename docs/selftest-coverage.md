@@ -4,7 +4,7 @@ _Auto-generiert mit `npm run update:selftest-coverage`._
 
 Quelle: `src/integrations/supabase/types.ts`. Die Angaben beschreiben deklarierte Prüfumfänge, keine erfolgreichen Testläufe und keine Code-Coverage.
 
-Von 363 Tabellen haben 111 ein registriertes Szenario; 4 sind noch nicht eingeordnet. 248 sind befristet ausgenommen, davon 112 als Ausbau offen und 136 als technisch oder fachlich ausgenommen. Ausnahmen zählen nicht als bestanden.
+Von 370 Tabellen haben 113 ein registriertes Szenario; 4 sind noch nicht eingeordnet. 253 sind befristet ausgenommen, davon 112 als Ausbau offen und 141 als technisch oder fachlich ausgenommen. Ausnahmen zählen nicht als bestanden.
 
 ## Szenarien
 
@@ -22,7 +22,7 @@ Von 363 Tabellen haben 111 ein registriertes Szenario; 4 sind noch nicht eingeor
 | `contact-relations` | Kontakt-Beziehungen (Datenschutz → Themen → Duplikate → Sammelaktion → Verteiler → Wissen → Förderungen) | contacts, contact_activities, contact_topics, topics, call_logs, distribution_lists, distribution_list_members, gdpr_requests, map_flags, map_flag_types, contact_briefing_memory, fundings, funding_participants |
 | `daily-briefing-lifecycle` | Tages-Briefings (Vortag-Regel) | daily_briefings |
 | `day-slip-lifecycle` | Tageszettel-Lifecycle (Links → Neuladen → Übernahme auf Folgetag) | day_slips, tasks, quick_notes |
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants, task_decision_responses, task_decision_response_history, task_decision_vote_effects, tasks, task_decision_attachments, task_decision_comments, task_decision_comment_reactions, dashboard_decision_nudges, notifications |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | task_decisions, task_decision_participants, task_decision_responses, task_decision_response_history, task_decision_vote_effects, tasks, task_decision_attachments, task_decision_comments, task_decision_comment_reactions, dashboard_decision_nudges, notifications, decision_invitation_dispatches, decision_notification_email_dispatches |
 | `document-annotation` | Dokument-Annotation | documents, document_annotations, document_annotation_events, document_annotation_tasks, tasks, task_assignees |
 | `document-list` | Dokumente: Suche, Kategorien, Sortierung und Auswahl | Keine (reine Regeln) |
 | `election-analysis` | Wahlanalyse: Datenqualität und Vergleichbarkeit | Keine (reine Regeln) |
@@ -124,8 +124,14 @@ Von 363 Tabellen haben 111 ein registriertes Szenario; 4 sind noch nicht eingeor
 | `data_lint_findings` | Ausgenommen bis 2027-06-30 | — |
 | `day_slips` | Szenario vorhanden | case-item-lifecycle, day-slip-lifecycle |
 | `decision_archive_settings` | Ausgenommen bis 2027-06-30 | — |
+| `decision_daily_digest_deliveries` | Ausgenommen bis 2027-06-30 | — |
+| `decision_deadline_reminders` | Ausgenommen bis 2027-06-30 | — |
 | `decision_email_templates` | Ausgenommen bis 2027-06-30 | — |
+| `decision_invitation_dispatches` | Szenario vorhanden | decision-lifecycle |
 | `decision_matrix_messages` | Ausgenommen bis 2027-06-30 | — |
+| `decision_notification_email_dispatches` | Szenario vorhanden | decision-lifecycle |
+| `decision_notification_preferences` | Ausgenommen bis 2027-06-30 | — |
+| `decision_notification_trigger_errors` | Ausgenommen bis 2027-06-30 | — |
 | `default_appointment_guests` | Ausgenommen bis 2027-06-30 | — |
 | `distribution_list_members` | Szenario vorhanden | contact-relations |
 | `distribution_lists` | Szenario vorhanden | contact-relations |
@@ -387,6 +393,7 @@ Von 363 Tabellen haben 111 ein registriertes Szenario; 4 sind noch nicht eingeor
 | `team_two_truths_months` | Ausstehend bis 2027-03-31 | — |
 | `tenant_collaborations` | Ausstehend bis 2027-03-31 | — |
 | `tenant_feature_flags` | Ausgenommen bis 2027-06-30 | — |
+| `tenant_notification_settings` | Ausgenommen bis 2027-06-30 | — |
 | `tenant_onboarding_checklist_items` | Ausstehend bis 2027-06-30 | — |
 | `tenant_onboarding_slides` | Ausstehend bis 2027-06-30 | — |
 | `tenants` | Ausgenommen bis 2027-06-30 | — |
@@ -424,8 +431,8 @@ Jede Ausnahme verlangt eine Begründung und ein Ablaufdatum. Abgelaufene, unbegr
 
 | Art | Gültig bis | Umfang | Begründung |
 |---|---|---|---|
-| Ausgenommen | 2027-06-30 | 20 Tabellen | Technische Infrastruktur-, Push-, Cache- oder Protokolltabelle ohne eigenen fachlichen Workflow; geprüft wird die auslösende Funktion. |
-| Ausgenommen | 2027-06-30 | 55 Tabellen | Konfigurations-, Lookup- oder Einstellungstabelle; das fachlich relevante Verhalten prüfen die Szenarien der zugehörigen Funktion. |
+| Ausgenommen | 2027-06-30 | 24 Tabellen | Technische Infrastruktur-, Push-, Cache- oder Protokolltabelle ohne eigenen fachlichen Workflow; geprüft wird die auslösende Funktion. |
+| Ausgenommen | 2027-06-30 | 56 Tabellen | Konfigurations-, Lookup- oder Einstellungstabelle; das fachlich relevante Verhalten prüfen die Szenarien der zugehörigen Funktion. |
 | Ausgenommen | 2027-06-30 | 27 Tabellen | Audit-, Verlaufs- oder Versionsprotokoll; wird von Datenbankfunktionen geschrieben und im Szenario der auslösenden Funktion mitgeprüft. |
 | Ausgenommen | 2027-06-30 | 34 Tabellen | Reine Verknüpfungstabelle ohne eigene Fachlogik; die Beziehung entsteht im Szenario der zugehörigen Funktion. |
 | Ausstehend | 2027-06-30 | 12 Tabellen | Sicherheits-, Onboarding- oder Automationsablauf: Für diese Tabelle fehlt ein eigenes Szenario; der Ausbau ist geplant. |
@@ -462,13 +469,11 @@ Diese implementierten Fachfunktionen haben laut Funktionskatalog keine Selbsttes
 | `knowledge.sources` | Quellen und Belege | wissen | knowledge_question_sources |
 | `knowledge.versions` | Snapshots und Versionen | wissen | knowledge_document_versions, knowledge_document_snapshots |
 | `mywork.navigation-previews` | Vorschauen für Kalender, Aufgaben, Akten, Chat und Kontakte | arbeitsbereich | appointments, external_events, appointment_preparations, tasks, case_files, appointment_contacts, case_file_contacts, contacts |
-| `mywork.quick-access` | Schnellzugriff und zuletzt besuchte Seiten | arbeitsbereich | user_navigation_visits, user_preferences |
 | `mywork.tabs` | Meine Arbeit – Bereichsnavigation und Einstellungen | arbeitsbereich | user_mywork_settings, user_planning_preferences |
 | `news.articles` | News-Artikel und Lesestatus | kommunikation | news_articles, news_article_states |
 | `press.releases` | Pressemitteilungen erstellen und freigeben | kommunikation | press_releases |
 | `profile.edit` | Eigenes Profil bearbeiten | arbeitsbereich | profiles, user_preferences, user_notification_settings |
 | `redaktion.assets-campaigns` | Social-Assets und Kampagnen | kommunikation | social_assets, social_campaigns |
-| `search.global` | Globale Suche und Befehlspalette | arbeitsbereich | search_analytics |
 | `tasks.search-filter` | Aufgaben suchen, filtern und sortieren | aufgaben | tasks, task_statuses, task_categories |
 | `timetracking.entries` | Arbeitszeit erfassen | mitarbeit | time_entries, time_entry_corrections, time_entry_history |
 

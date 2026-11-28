@@ -85,6 +85,13 @@ interface CategorySectionProps {
   onToggleSingle: (typeId: string, field: NotificationSettingField, value: boolean) => void;
 }
 
+/** E-Mail wird derzeit nur für Entscheidungs-Meldungen zugestellt; andere Bereiche bleiben in der App. */
+const EMAIL_CHANNEL_TYPE_PREFIX = 'task_decision_';
+const supportsEmailChannel = (typeName?: string | null): boolean =>
+  typeof typeName === 'string' && typeName.startsWith(EMAIL_CHANNEL_TYPE_PREFIX);
+const EMAIL_CHANNEL_HINT =
+  'E-Mail wird derzeit nur für Entscheidungs-Meldungen versendet. Alle anderen Bereiche bleiben in der App.';
+
 const getCategoryKey = (setting: NotificationTypeSettings): string => setting.type.category ?? 'system';
 const getQuietHoursStart = (value?: string | null): string => value ?? DEFAULT_QUIET_HOURS_START;
 const getQuietHoursEnd = (value?: string | null): string => value ?? DEFAULT_QUIET_HOURS_END;
@@ -102,6 +109,8 @@ const CategorySection = ({
   const someEnabled = group.settings.some((setting: NotificationTypeSettings): boolean => setting.is_enabled);
   const allPush = group.settings.every((setting: NotificationTypeSettings): boolean => setting.push_enabled);
   const allEmail = group.settings.every((setting: NotificationTypeSettings): boolean => setting.email_enabled);
+  const emailSupported = group.settings.some((setting: NotificationTypeSettings): boolean =>
+    supportsEmailChannel(setting.type.name));
 
   return (
     <div className="overflow-hidden rounded-lg border">
@@ -128,15 +137,21 @@ const CategorySection = ({
                   className="scale-75"
                 />
               </div>
-              <div className="flex items-center gap-1.5" title="E-Mail für alle">
-                <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                <Switch
-                  checked={allEmail}
-                  onCheckedChange={(checked: boolean): void => onToggleCategory(group.category, 'email_enabled', checked)}
-                  disabled={loading}
-                  className="scale-75"
-                />
-              </div>
+              {emailSupported ? (
+                <div className="flex items-center gap-1.5" title="E-Mail für alle Entscheidungs-Meldungen">
+                  <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Switch
+                    checked={allEmail}
+                    onCheckedChange={(checked: boolean): void => onToggleCategory(group.category, 'email_enabled', checked)}
+                    disabled={loading}
+                    className="scale-75"
+                  />
+                </div>
+              ) : (
+                <span title={EMAIL_CHANNEL_HINT}>
+                  <Mail className="h-3.5 w-3.5 text-muted-foreground/40" aria-label="E-Mail in diesem Bereich nicht verfügbar" />
+                </span>
+              )}
             </>
           )}
           <Switch
@@ -172,12 +187,22 @@ const CategorySection = ({
                           disabled={loading || pushPermission !== 'granted'}
                           className="scale-75"
                         />
-                        <Switch
-                          checked={setting.email_enabled}
-                          onCheckedChange={(checked: boolean): void => onToggleSingle(setting.notification_type_id, 'email_enabled', checked)}
-                          disabled={loading}
-                          className="scale-75"
-                        />
+                        {supportsEmailChannel(setting.type.name) ? (
+                          <Switch
+                            title="E-Mail für diesen Meldungstyp"
+                            checked={setting.email_enabled}
+                            onCheckedChange={(checked: boolean): void => onToggleSingle(setting.notification_type_id, 'email_enabled', checked)}
+                            disabled={loading}
+                            className="scale-75"
+                          />
+                        ) : (
+                          <span title={EMAIL_CHANNEL_HINT}>
+                            <Mail
+                              className="h-3.5 w-3.5 text-muted-foreground/40"
+                              aria-label="E-Mail für diesen Meldungstyp nicht verfügbar"
+                            />
+                          </span>
+                        )}
                       </>
                     )}
                     <Switch
@@ -673,7 +698,9 @@ export const NotificationSettings = (): JSX.Element => {
           </CardTitle>
           <CardDescription>
             Persönliche Zustellfrequenz für Kommentare, Reaktionen, Ergebnisse und Anfragen.
-            Frist-, Rückzugs- und Erwähnungsmeldungen bleiben sofort.
+            Frist-, Rückzugs- und Erwähnungsmeldungen bleiben sofort. Die E-Mail-Schalter bei
+            den Entscheidungs-Meldungen folgen dieser Frequenz: gebündelt heißt eine E-Mail als
+            Digest, aus heißt keine E-Mail für gebündelte Meldungen.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -726,7 +753,10 @@ export const NotificationSettings = (): JSX.Element => {
       <Card>
         <CardHeader>
           <CardTitle>Benachrichtigungstypen</CardTitle>
-          <CardDescription>Legen Sie fest, welche Benachrichtigungen Sie erhalten möchten.</CardDescription>
+          <CardDescription>
+            Legen Sie fest, welche Benachrichtigungen Sie erhalten möchten. E-Mail kann derzeit
+            für Entscheidungs-Meldungen zugestellt werden; alle anderen Bereiche bleiben in der App.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {categoryGroups.map((group: CategoryGroup) => (

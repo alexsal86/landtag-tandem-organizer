@@ -6,8 +6,8 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **22** in **9** Unterbereichen
-- implementiert: **22**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **23** in **9** Unterbereichen
+- implementiert: **23**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **3**
 - ohne Dokumentationsverweis: **9**
 
@@ -28,6 +28,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `decisions.comment-mentions` Direkte Erwähnungen | Kommentare | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.result-summary` Aggregierte Antwortzahlen im Ergebnis | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.digest-items` Aufklappbarer Digest mit Einzelmeldungen | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `decisions.notification-email` Entscheidungs-Meldungen per E-Mail | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.deadline-reminders` Frist-Erinnerungen vor Ablauf | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.creator-deadline-warnings` Fristwarnungen für den Ersteller | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.notification-digest` Gebündelte Entscheidungs-Meldungen | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
@@ -56,13 +57,13 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`dashboard_decision_nudges`, `decision_archive_settings`, `decision_daily_digest_deliveries`, `decision_deadline_reminders`, `decision_email_templates`, `decision_invitation_dispatches`, `decision_matrix_messages`, `decision_notification_preferences`, `decision_notification_trigger_errors`, `email_logs`, `notification_types`, `notifications`, `profiles`, `task_decision_attachments`, `task_decision_comment_reactions`, `task_decision_comments`, `task_decision_participants`, `task_decision_response_history`, `task_decision_responses`, `task_decision_topics`, `task_decision_vote_effects`, `task_decisions`, `tasks`, `tenant_notification_settings`, `user_notification_settings`
+`dashboard_decision_nudges`, `decision_archive_settings`, `decision_daily_digest_deliveries`, `decision_deadline_reminders`, `decision_email_templates`, `decision_invitation_dispatches`, `decision_matrix_messages`, `decision_notification_email_dispatches`, `decision_notification_preferences`, `decision_notification_trigger_errors`, `email_logs`, `notification_types`, `notifications`, `profiles`, `task_decision_attachments`, `task_decision_comment_reactions`, `task_decision_comments`, `task_decision_participants`, `task_decision_response_history`, `task_decision_responses`, `task_decision_topics`, `task_decision_vote_effects`, `task_decisions`, `tasks`, `tenant_notification_settings`, `user_notification_settings`
 
 ## Selbsttest-Szenarien
 
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
-| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 11 | 12 | — |
+| `decision-lifecycle` | Entscheidungs-Lifecycle (active → open → archived) | 11 | 13 | — |
 | `task-lifecycle` | Aufgaben-Lifecycle (Zuweisung → Frist → Entscheidung → Jour fixe → erledigt) | 6 | 8 | — |
 
 ## Selbsttest-Schritte
@@ -89,6 +90,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `comment-mentions` | Direkte Erwähnungen sofort und außerhalb des Digests zustellen | workflow | — |
 | `decision-lifecycle` | `deadline-reminders` | Frist-Erinnerungen 24 h/2 h einmalig und mit Ruhezeiten | workflow | — |
 | `decision-lifecycle` | `deadline-rearm` | Verlängerte Frist erinnert Teilnehmende und Ersteller erneut | workflow | — |
+| `decision-lifecycle` | `notification-email` | Entscheidungs-Meldungen per E-Mail aus der Outbox | workflow | — |
 | `decision-lifecycle` | `creator-deadline-warnings` | Ersteller-Warnung vor Ablauf, bei Überfälligkeit und zu offenen Rückfragen | workflow | — |
 | `decision-lifecycle` | `inbox-hygiene` | Anfrage-Meldungen beim Öffnen lesen und beim Archivieren verfallen lassen | workflow | — |
 | `decision-lifecycle` | `digest-result-person` | Digest-Ergebnis ohne Person, Kommentar und Reaktion mit Person | workflow | — |
@@ -132,8 +134,9 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 8. Anfrage-, Kommentar-, Reaktions-, Ersteller-Antwort- und Abschlussmeldung entstehen im Mandanten der Entscheidung
 9. Der Ersteller erhält vor Ablauf und einmalig bei Überfälligkeit eine Warnung mit der Zahl fehlender Antworten und offener Rückfragen samt Alter der ältesten
 10. Eine verlängerte Frist setzt die gespeicherten Erinnerungsstufen zurück, sodass Teilnehmende und Ersteller erneut erinnert werden; beim Vorziehen entstehen keine Doppelungen
-11. Der Tagesüberblick nennt offene Rückfragen einer eigenen Entscheidung samt Alter der ältesten
-12. Teilnehmer-Insert stellt genau eine Einladungs-Versandzeile ein, die der Worker übernimmt und verbucht
+11. Der E-Mail-Schalter für Entscheidungs-Meldungen stellt eine Outbox-Zeile ein; Frequenz, Ruhezeiten und Verbuchung werden auf demselben Weg geprüft
+12. Der Tagesüberblick nennt offene Rückfragen einer eigenen Entscheidung samt Alter der ältesten
+13. Teilnehmer-Insert stellt genau eine Einladungs-Versandzeile ein, die der Worker übernimmt und verbucht
 
 ### `task-lifecycle`
 
@@ -482,6 +485,45 @@ Freiwilliger morgendlicher Überblick über alle offenen Entscheidungen einer Pe
 **Bekannte Einschränkungen**
 
 - Nicht geprüft: Browserdarstellung, Push-Versand und das Öffnen über andere Wege als die Detailansicht.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `decisions.notification-email` — Entscheidungs-Meldungen per E-Mail
+Stellt Entscheidungs-Meldungen für Personen mit aktiviertem E-Mail-Schalter in eine Outbox und versendet sie über Resend. Der Versand folgt der Zustellfrequenz (gebündelt heißt Digest-Mail, aus heißt keine Einzelmail), stellt während der Ruhezeiten zurück und verbucht Erfolg, Übersprung oder Fehlversuch. Fehlende Adresse und abgeschalteter Schalter werden übersprungen statt als Fehler gezählt.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** `src/components/notifications/NotificationSettings.tsx`
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** `dispatch-decision-notification-emails`
+- **Datenbankfunktionen:** `enqueue_decision_notification_email`, `claim_decision_notification_email_dispatches`, `finish_decision_notification_email_dispatch`, `decision_quiet_hours_end_at`, `decision_notification_email_selftest`
+- **Tabellen:** `decision_notification_email_dispatches`, `notifications`, `notification_types`, `user_notification_settings`, `decision_notification_preferences`
+- **Abhängigkeiten:** `decisions.notification-digest`
+- **Selbsttests:** `decision-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/decision-notification-email.md`
+
+**Nachweise im Quellcode**
+
+- supabase/migrations/20261128254000_decision_notification_email.sql
+- supabase/migrations/20261128255000_decision_notification_email_selftest.sql
+- supabase/functions/dispatch-decision-notification-emails/index.ts
+- src/components/notifications/NotificationSettings.tsx
+- src/features/selftest/scenarios/decision-lifecycle.ts
+
+**Bekannte Einschränkungen**
+
+- Nicht geprüft: echter Resend-Versand, echter Cron-Lauf und die Browserdarstellung. Andere Bereiche als Entscheidungen versenden weiterhin keine E-Mail; dort zeigt die Oberfläche bewusst keinen Schalter.
 
 **Offene Prüfpunkte**
 

@@ -2,12 +2,12 @@
   "schemaVersion": 2,
   "source": "src/integrations/supabase/types.ts",
   "counts": {
-    "total": 363,
-    "scenario": 111,
+    "total": 370,
+    "scenario": 113,
     "deferred": 112,
-    "excluded": 136,
+    "excluded": 141,
     "missing": 4,
-    "exceptions": 248
+    "exceptions": 253
   },
   "exceptionGroups": [
     {
@@ -19,6 +19,10 @@
         "bulk_action_audit",
         "data_lint_findings",
         "decision_matrix_messages",
+        "decision_daily_digest_deliveries",
+        "decision_deadline_reminders",
+        "decision_notification_preferences",
+        "decision_notification_trigger_errors",
         "edge_function_cache",
         "egress_anomalies",
         "egress_metrics",
@@ -49,6 +53,7 @@
         "appointment_locations",
         "appointment_statuses",
         "calendar_sync_settings",
+        "tenant_notification_settings",
         "case_file_processing_statuses",
         "case_file_types",
         "case_item_categories",
@@ -1101,7 +1106,9 @@
         "task_decision_comments",
         "task_decision_comment_reactions",
         "dashboard_decision_nudges",
-        "notifications"
+        "notifications",
+        "decision_invitation_dispatches",
+        "decision_notification_email_dispatches"
       ],
       "features": [
         "decisions"
@@ -2944,6 +2951,24 @@
       }
     },
     {
+      "table": "decision_daily_digest_deliveries",
+      "status": "excluded",
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
+    },
+    {
+      "table": "decision_deadline_reminders",
+      "status": "excluded",
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
+    },
+    {
       "table": "decision_email_templates",
       "status": "excluded",
       "scenarios": [],
@@ -2953,7 +2978,41 @@
       }
     },
     {
+      "table": "decision_invitation_dispatches",
+      "status": "scenario",
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "exception": null
+    },
+    {
       "table": "decision_matrix_messages",
+      "status": "excluded",
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
+    },
+    {
+      "table": "decision_notification_email_dispatches",
+      "status": "scenario",
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "exception": null
+    },
+    {
+      "table": "decision_notification_preferences",
+      "status": "excluded",
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
+    },
+    {
+      "table": "decision_notification_trigger_errors",
       "status": "excluded",
       "scenarios": [],
       "exception": {
@@ -5261,6 +5320,15 @@
       }
     },
     {
+      "table": "tenant_notification_settings",
+      "status": "excluded",
+      "scenarios": [],
+      "exception": {
+        "kind": "excluded",
+        "expiresOn": "2027-06-30"
+      }
+    },
+    {
       "table": "tenant_onboarding_checklist_items",
       "status": "deferred",
       "scenarios": [],
@@ -5727,15 +5795,6 @@
       ]
     },
     {
-      "id": "mywork.quick-access",
-      "name": "Schnellzugriff und zuletzt besuchte Seiten",
-      "area": "arbeitsbereich",
-      "tables": [
-        "user_navigation_visits",
-        "user_preferences"
-      ]
-    },
-    {
       "id": "mywork.tabs",
       "name": "Meine Arbeit – Bereichsnavigation und Einstellungen",
       "area": "arbeitsbereich",
@@ -5778,14 +5837,6 @@
       "tables": [
         "social_assets",
         "social_campaigns"
-      ]
-    },
-    {
-      "id": "search.global",
-      "name": "Globale Suche und Befehlspalette",
-      "area": "arbeitsbereich",
-      "tables": [
-        "search_analytics"
       ]
     },
     {

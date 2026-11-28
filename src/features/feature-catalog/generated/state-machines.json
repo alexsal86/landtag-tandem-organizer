@@ -5,12 +5,12 @@
   "sources": {
     "types": "src/integrations/supabase/types.ts",
     "migrationsDirectory": "supabase/migrations",
-    "migrationCount": 1024,
+    "migrationCount": 1026,
     "tsModules": [
       "src/components/letters/types.ts"
     ]
   },
-  "machineCount": 53,
+  "machineCount": 54,
   "anomalies": [],
   "machines": [
     {
@@ -1646,6 +1646,116 @@
             "processing"
           ],
           "message": "Schreibvorgänge ohne belegten Ausgangszustand; die Kante bleibt gerichtet, aber ohne Quelle."
+        }
+      ]
+    },
+    {
+      "id": "decision_notification_email_dispatches.status",
+      "table": "decision_notification_email_dispatches",
+      "column": "status",
+      "enumType": null,
+      "states": [
+        {
+          "value": "failed",
+          "sources": [
+            "check:supabase/migrations/20261128254000_decision_notification_email.sql"
+          ]
+        },
+        {
+          "value": "pending",
+          "sources": [
+            "check:supabase/migrations/20261128254000_decision_notification_email.sql",
+            "default:supabase/migrations/20261128254000_decision_notification_email.sql"
+          ]
+        },
+        {
+          "value": "processing",
+          "sources": [
+            "check:supabase/migrations/20261128254000_decision_notification_email.sql",
+            "write:supabase/migrations/20261128254000_decision_notification_email.sql"
+          ]
+        },
+        {
+          "value": "sent",
+          "sources": [
+            "check:supabase/migrations/20261128254000_decision_notification_email.sql"
+          ]
+        },
+        {
+          "value": "skipped",
+          "sources": [
+            "check:supabase/migrations/20261128254000_decision_notification_email.sql"
+          ]
+        }
+      ],
+      "initialStates": [
+        "pending"
+      ],
+      "transitions": [
+        {
+          "from": null,
+          "to": "pending",
+          "kind": "initial",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261128254000_decision_notification_email.sql"
+          ],
+          "guards": []
+        },
+        {
+          "from": null,
+          "to": "processing",
+          "kind": "write",
+          "param": null,
+          "sources": [
+            "supabase/migrations/20261128254000_decision_notification_email.sql"
+          ],
+          "guards": []
+        }
+      ],
+      "guards": [],
+      "reconciliation": null,
+      "limitations": [
+        "Kein Trigger im Migrationsbestand gefunden; Übergänge sind nicht durch Trigger abgesichert.",
+        "Übergänge ohne belegten Ausgangszustand sind mit \"from\": null gekennzeichnet."
+      ],
+      "findings": [
+        {
+          "kind": "isoliert",
+          "severity": "info",
+          "states": [
+            "failed",
+            "sent",
+            "skipped"
+          ],
+          "message": "Zustände ohne jede Verbindung im belegten Graphen."
+        },
+        {
+          "kind": "sackgasse",
+          "severity": "info",
+          "states": [
+            "pending",
+            "processing"
+          ],
+          "message": "Zustände mit Eingang, aber ohne belegten ausgehenden Übergang (möglicher Endzustand)."
+        },
+        {
+          "kind": "unbelegter-start",
+          "severity": "info",
+          "states": [
+            "processing"
+          ],
+          "message": "Schreibvorgänge ohne belegten Ausgangszustand; die Kante bleibt gerichtet, aber ohne Quelle."
+        },
+        {
+          "kind": "unerreichbar",
+          "severity": "info",
+          "states": [
+            "failed",
+            "sent",
+            "skipped"
+          ],
+          "message": "Zustände ohne belegten Eingang; der Graph enthält noch keinen Übergang mit Ausgangszustand, daher keine Aussage über Erreichbarkeit."
         }
       ]
     },

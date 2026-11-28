@@ -24,6 +24,8 @@ export const decisionLifecycleScenario: TestScenario = {
     "task_decision_comment_reactions",
     "dashboard_decision_nudges",
     "notifications",
+    "decision_invitation_dispatches",
+    "decision_notification_email_dispatches",
   ],
   features: ["decisions"],
   checks: [
@@ -37,6 +39,7 @@ export const decisionLifecycleScenario: TestScenario = {
     "Anfrage-, Kommentar-, Reaktions-, Ersteller-Antwort- und Abschlussmeldung entstehen im Mandanten der Entscheidung",
     "Der Ersteller erhält vor Ablauf und einmalig bei Überfälligkeit eine Warnung mit der Zahl fehlender Antworten und offener Rückfragen samt Alter der ältesten",
     "Eine verlängerte Frist setzt die gespeicherten Erinnerungsstufen zurück, sodass Teilnehmende und Ersteller erneut erinnert werden; beim Vorziehen entstehen keine Doppelungen",
+    "Der E-Mail-Schalter für Entscheidungs-Meldungen stellt eine Outbox-Zeile ein; Frequenz, Ruhezeiten und Verbuchung werden auf demselben Weg geprüft",
     "Der Tagesüberblick nennt offene Rückfragen einer eigenen Entscheidung samt Alter der ältesten",
     "Teilnehmer-Insert stellt genau eine Einladungs-Versandzeile ein, die der Worker übernimmt und verbucht",
   ],
@@ -524,6 +527,21 @@ export const decisionLifecycleScenario: TestScenario = {
           message: report?.ok === true
             ? "Eine spätere Frist setzt die gespeicherten Stufen zurück; 24-h-Erinnerung und Ersteller-Warnung greifen zur neuen Frist erneut, beim Vorziehen entstehen keine Doppelungen."
             : (report?.skipped ?? report?.message ?? "Fristverlängerungs-Selbsttest fehlgeschlagen."),
+          details: report?.checks,
+        };
+      },
+    },
+    {
+      id: "notification-email", label: "Entscheidungs-Meldungen per E-Mail aus der Outbox", kind: "workflow",
+      run: async (ctx) => {
+        const { data, error } = await supabase.rpc("decision_notification_email_selftest", { p_tenant: ctx.tenantId });
+        if (error) return { ok: false, message: describeError(error) };
+        const report = data as { ok?: boolean; message?: string; skipped?: string; checks?: Record<string, unknown> } | null;
+        return {
+          ok: report?.ok === true,
+          message: report?.ok === true
+            ? "Der E-Mail-Schalter stellt eine Outbox-Zeile ein; Frequenz und Ruhezeiten werden beachtet und der Versand als gesendet verbucht."
+            : (report?.skipped ?? report?.message ?? "E-Mail-Kanal-Selbsttest fehlgeschlagen."),
           details: report?.checks,
         };
       },

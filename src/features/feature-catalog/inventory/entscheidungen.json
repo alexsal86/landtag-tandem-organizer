@@ -402,6 +402,61 @@
       ]
     },
     {
+      "id": "decisions.notification-email",
+      "subarea": "Meldungen",
+      "name": "Entscheidungs-Meldungen per E-Mail",
+      "description": "Stellt Entscheidungs-Meldungen für Personen mit aktiviertem E-Mail-Schalter in eine Outbox und versendet sie über Resend. Der Versand folgt der Zustellfrequenz (gebündelt heißt Digest-Mail, aus heißt keine Einzelmail), stellt während der Ruhezeiten zurück und verbucht Erfolg, Übersprung oder Fehlversuch. Fehlende Adresse und abgeschalteter Schalter werden übersprungen statt als Fehler gezählt.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/migrations/20261128254000_decision_notification_email.sql",
+        "supabase/migrations/20261128255000_decision_notification_email_selftest.sql",
+        "supabase/functions/dispatch-decision-notification-emails/index.ts",
+        "src/components/notifications/NotificationSettings.tsx",
+        "src/features/selftest/scenarios/decision-lifecycle.ts"
+      ],
+      "components": [
+        "src/components/notifications/NotificationSettings.tsx"
+      ],
+      "edgeFunctions": [
+        "dispatch-decision-notification-emails"
+      ],
+      "rpcs": [
+        "enqueue_decision_notification_email",
+        "claim_decision_notification_email_dispatches",
+        "finish_decision_notification_email_dispatch",
+        "decision_quiet_hours_end_at",
+        "decision_notification_email_selftest"
+      ],
+      "tables": [
+        "decision_notification_email_dispatches",
+        "notifications",
+        "notification_types",
+        "user_notification_settings",
+        "decision_notification_preferences"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "dependsOn": [
+        "decisions.notification-digest"
+      ],
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "docs": [
+        "docs/decision-notification-email.md"
+      ],
+      "limitations": [
+        "Nicht geprüft: echter Resend-Versand, echter Cron-Lauf und die Browserdarstellung. Andere Bereiche als Entscheidungen versenden weiterhin keine E-Mail; dort zeigt die Oberfläche bewusst keinen Schalter."
+      ]
+    },
+    {
       "id": "decisions.deadline-reminders",
       "subarea": "Meldungen",
       "name": "Frist-Erinnerungen vor Ablauf",

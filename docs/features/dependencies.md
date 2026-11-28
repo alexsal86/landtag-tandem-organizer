@@ -79,6 +79,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `decisions.notification-digest` | `decisions.comments` |
 | `decisions.daily-digest` | `decisions.notification-digest` |
 | `decisions.inbox-hygiene` | `decisions.notification-digest` |
+| `decisions.notification-email` | `decisions.notification-digest` |
 | `decisions.deadline-reminders` | `decisions.notification-digest` |
 | `decisions.creator-deadline-warnings` | `decisions.deadline-reminders` |
 | `decisions.digest-items` | `decisions.notification-digest` |
@@ -524,6 +525,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `create-demo-users` | verwaltung |
 | `detect-appointment-district` | termine |
 | `dispatch-decision-invitations` | entscheidungen |
+| `dispatch-decision-notification-emails` | entscheidungen |
 | `dispatch-mobile-push` | schnittstellen |
 | `execute-annual-tasks` | automation |
 | `extract-photo-data` | wahl |

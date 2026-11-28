@@ -3789,6 +3789,73 @@ export type Database = {
           },
         ]
       }
+      decision_notification_email_dispatches: {
+        Row: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          decision_id: string | null
+          defer_until: string | null
+          id: string
+          last_error: string | null
+          notification_id: string
+          processed_at: string | null
+          status: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          decision_id?: string | null
+          defer_until?: string | null
+          id?: string
+          last_error?: string | null
+          notification_id: string
+          processed_at?: string | null
+          status?: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          decision_id?: string | null
+          defer_until?: string | null
+          id?: string
+          last_error?: string | null
+          notification_id?: string
+          processed_at?: string | null
+          status?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_notification_email_dispatches_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "task_decisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decision_notification_email_dispatches_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: true
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decision_notification_email_dispatches_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decision_deadline_reminders: {
         Row: {
           decision_id: string
@@ -19443,6 +19510,7 @@ export type Database = {
       decision_digest_items_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_deadline_reminder_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_deadline_rearm_selftest: { Args: { p_tenant: string }; Returns: Json }
+      decision_notification_email_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_creator_deadline_warning_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_inbox_hygiene_selftest: { Args: { p_tenant: string }; Returns: Json }
       mark_decision_request_notifications_read: {

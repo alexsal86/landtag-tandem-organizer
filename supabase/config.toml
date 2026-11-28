@@ -77,6 +77,9 @@ verify_jwt = true
 [functions.send-decision-email]
 verify_jwt = true
 
+[functions.dispatch-decision-notification-emails]
+verify_jwt = true
+
 [functions.process-decision-response]
 verify_jwt = false
 

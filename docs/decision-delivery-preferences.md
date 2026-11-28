@@ -38,6 +38,16 @@ nach; bereits gelesene oder inzwischen ungültige Meldungen werden übersprungen
 Einzelmeldungen im Modus „gebündelt“ bleiben vom Catch-up ausgenommen, weil der
 Digest sie bündelt. Details: [decision-quiet-push-catchup.md](decision-quiet-push-catchup.md).
 
+## E-Mail-Kanal
+
+Die E-Mail-Schalter je Meldungstyp gelten für Entscheidungs-Meldungen und folgen
+derselben Frequenz: Bei `digest` übernimmt die Digest-Meldung die E-Mail, bei `off`
+entfallen die gebündelten Typen. Frist-, Rückzugs-, Alarm-, Erwähnungs- und
+Digest-Meldungen bleiben erreichbar, solange der E-Mail-Schalter des Typs aktiv ist.
+Ruhezeiten stellen den Versand zurück, statt die Mail zu verwerfen. Für alle anderen
+Bereiche zeigt die Oberfläche kein E-Mail-Schalter mehr an. Details:
+[decision-notification-email.md](decision-notification-email.md).
+
 ## Durchsetzung
 
 - `create_notification` verwirft unkritische Entscheidungs-Meldungen bei `off`.

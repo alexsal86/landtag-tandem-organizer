@@ -299,7 +299,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 - `events.legacy-rsvp` — Legacy-Einladungslinks (veraltet)
 - `cases.legacy-routes` — Legacy-Vorgangsrouten (veraltet)
 
-## Funktionen mit Einschränkungen oder offenen Punkten (129)
+## Funktionen mit Einschränkungen oder offenen Punkten (130)
 
 ### `mywork.dashboard`
 
@@ -496,6 +496,10 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 ### `decisions.inbox-hygiene`
 
 - Nicht geprüft: Browserdarstellung, Push-Versand und das Öffnen über andere Wege als die Detailansicht.
+
+### `decisions.notification-email`
+
+- Nicht geprüft: echter Resend-Versand, echter Cron-Lauf und die Browserdarstellung. Andere Bereiche als Entscheidungen versenden weiterhin keine E-Mail; dort zeigt die Oberfläche bewusst keinen Schalter.
 
 ### `decisions.deadline-reminders`
 
