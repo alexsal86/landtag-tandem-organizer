@@ -76,7 +76,7 @@ export const DashboardHeader = ({ showTeamRituals = true }: { showTeamRituals?: 
   };
 
   return (
-    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
+    <div className="@container grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
       <div className="min-w-0 space-y-3">
         <div className="space-y-1">
           <p className="text-body-lg font-normal capitalize text-muted-foreground">{dayDate}</p>
@@ -86,7 +86,9 @@ export const DashboardHeader = ({ showTeamRituals = true }: { showTeamRituals?: 
             </h1>
           )}
         </div>
-        <DashboardDaySummary />
+        <div className="wrap-anywhere lg:max-w-[50cqw]">
+          <DashboardDaySummary />
+        </div>
       </div>
       <div className="w-full min-w-0 max-w-xs space-y-4 lg:justify-self-end">
       {weatherItems.length > 0 && (
