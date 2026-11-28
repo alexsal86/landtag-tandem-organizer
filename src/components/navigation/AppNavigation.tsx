@@ -8,6 +8,7 @@ import { asBriefingStatus, BRIEFING_STATUS_LABELS } from "@/features/appointment
 import { ballAssigneeLabel } from "@/features/tasks/stafette";
 import { useNavPanelData } from "./appNavigation/useNavPanelData";
 import { NavDossierCapture } from "@/components/search/NavDossierCapture";
+import { buildCaseItemHref, buildDocumentHref } from "@/lib/appTargets";
 import { Link, useNavigate } from "react-router-dom";
 import { debugConsole } from '@/utils/debugConsole';
 import { 
@@ -712,7 +713,7 @@ export function AppNavigation({
                         <button
                           key={item.id}
                           onClick={() => {
-                            addPage({ id: `case-item-${item.id}`, label: item.label, icon: 'Briefcase', route: `/mywork?tab=cases&highlight=${item.id}`, type: 'item' });
+                            addPage({ id: `case-item-${item.id}`, label: item.label, icon: 'Briefcase', route: buildCaseItemHref(item.id), type: 'item' });
                             setQuickAccessPopoverOpen(false);
                             setQuickAccessAddCategory(null);
                           }}
@@ -735,7 +736,7 @@ export function AppNavigation({
                         <button
                           key={item.id}
                           onClick={() => {
-                            addPage({ id: `document-${item.id}`, label: item.label, icon: 'FileText', route: `/?section=documents&document=${item.id}&highlight=${item.id}`, type: 'item' });
+                            addPage({ id: `document-${item.id}`, label: item.label, icon: 'FileText', route: buildDocumentHref(item.id), type: 'item' });
                             setQuickAccessPopoverOpen(false);
                             setQuickAccessAddCategory(null);
                           }}
