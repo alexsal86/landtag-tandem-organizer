@@ -399,7 +399,7 @@ Zeigt Vorschauen mit dem nächsten Termin samt Briefingstatus, einer offenen Auf
 - Keine.
 
 ### `notifications.inbox` — Benachrichtigungen lesen und als gelesen markieren
-Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslösenden Fachbereich; Lesen wird pro Nutzer persistiert. Liste, Ungelesen-Zähler, Realtime-Kanal sowie Gelesen-Markieren und Löschen sind auf den aktiven Mandanten begrenzt; beim Mandantenwechsel werden sie geleert und neu geladen. Jeder clientseitig erzeugte Meldungstyp ist im Büro geseedet, hat eine Kategorie und ein ausdrückliches Deep-Link-Ziel.
+Zeigt In-App-Benachrichtigungen, ungelesene Zähler und Deep-Links in den auslösenden Fachbereich; Lesen wird pro Nutzer persistiert. Liste, Ungelesen-Zähler, Realtime-Kanal sowie Gelesen-Markieren und Löschen sind auf den aktiven Mandanten begrenzt; beim Mandantenwechsel werden sie geleert und neu geladen. Jeder clientseitig erzeugte Meldungstyp ist im Büro geseedet und hat ein ausdrückliches Deep-Link-Ziel. Die Kategorie-Schlüssel entsprechen den Anzeige-Gruppen der Einstellungsseite (calendar, cases, documents, editorial, team …).
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert

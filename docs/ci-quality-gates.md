@@ -21,6 +21,7 @@ Diese Regeln definieren die verpflichtenden und optionalen Qualitäts- und Secur
    - Laden, Optimistic Updates, `markAllAsRead`, Cross-Tab-Signale über LocalStorage.
    - Mandanten-Grenze: Liste, Zähler, Realtime-Kanal, Gelesen-Markieren und Löschen sind auf den aktiven Mandanten begrenzt.
    - Typ-Vertrag: `npm run check:notification-types` gleicht `STANDARD_NOTIFICATION_TYPES`, die Selbsttest-Erwartungen, die Client-Aufrufe und die Deep-Link-Ziele ab; der Schritt `notification-types` im Szenario `notification-inbox` prüft die Existenz je Büro.
+   - Kategorie-Vokabular: Seed-Kategorien müssen in `CATEGORY_META` der Einstellungsseite vorkommen; Abweichungen lassen den Check fehlschlagen. Bestehende Büros werden per Migration auf dieselben Schlüssel gezogen.
 5. **Edge-Auth/Role/Tenant-Grenzen**
    - Edge Functions mit Auth-, Rollen- und Tenant-Grenzfallprüfungen inkl. Trigger-Wiederholungen.
 

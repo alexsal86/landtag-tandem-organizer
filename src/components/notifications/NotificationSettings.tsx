@@ -54,6 +54,8 @@ const CATEGORY_META: Record<string, { label: string; icon: string; order: number
   notes: { label: 'Notizen', icon: '📝', order: 11 },
   polls: { label: 'Abstimmungen', icon: '📊', order: 12 },
   planning: { label: 'Veranstaltungsplanung', icon: '🎪', order: 13 },
+  editorial: { label: 'Redaktion', icon: '📰', order: 15 },
+  team: { label: 'Team', icon: '🧑‍🤝‍🧑', order: 16 },
   system: { label: 'System', icon: '⚙️', order: 14 },
 };
 

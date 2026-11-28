@@ -14,6 +14,7 @@ import { join, relative } from 'node:path';
 const SEED_FILE = 'supabase/functions/_shared/tenant-seed.ts';
 const EXPECTATIONS_FILE = 'src/features/selftest/notificationTypeExpectations.ts';
 const DEEP_LINK_FILE = 'src/utils/notificationDeepLinks.ts';
+const SETTINGS_FILE = 'src/components/notifications/NotificationSettings.tsx';
 const SOURCE_ROOT = 'src';
 
 const read = (file) => readFileSync(file, 'utf8');
@@ -76,6 +77,17 @@ function readClientUsage() {
   return usage;
 }
 
+/** Kanonische Kategorie-Schlüssel aus der Einstellungsseite. */
+function readUiCategories() {
+  const source = read(SETTINGS_FILE);
+  const start = source.indexOf('CATEGORY_META');
+  if (start === -1) throw new Error(`${SETTINGS_FILE}: CATEGORY_META nicht gefunden`);
+  const end = source.indexOf('};', start);
+  return new Set(
+    [...source.slice(start, end).matchAll(/^\s*([a-z][a-z0-9_]*):\s*\{/gm)].map((m) => m[1]),
+  );
+}
+
 function readDeepLinkCases() {
   const source = read(DEEP_LINK_FILE);
   const cases = new Set();
@@ -94,6 +106,17 @@ for (const entry of seed) {
   seedNames.add(entry.name);
   if (!entry.category) failures.push(`Seed-Eintrag ohne Kategorie: ${entry.name}`);
   if (!entry.label) warnings.push(`Seed-Eintrag ohne Label: ${entry.name}`);
+}
+
+const uiCategories = readUiCategories();
+const unknownCategories = new Map();
+for (const entry of seed) {
+  if (entry.category && !uiCategories.has(entry.category) && !unknownCategories.has(entry.category)) {
+    unknownCategories.set(entry.category, entry.name);
+  }
+}
+for (const [category, type] of unknownCategories) {
+  failures.push(`Seed-Kategorie "${category}" fehlt in CATEGORY_META (z. B. bei ${type})`);
 }
 
 const expectations = readExpectations();
@@ -115,7 +138,7 @@ for (const name of [...usage.keys()].sort()) {
   }
 }
 
-console.log(`Meldungstypen: ${seed.length} im Seed, ${usage.size} im Client erzeugt, ${expectations.length} im Selbsttest erwartet.`);
+console.log(`Meldungstypen: ${seed.length} im Seed, ${usage.size} im Client erzeugt, ${expectations.length} im Selbsttest erwartet, ${uiCategories.size} Anzeige-Gruppen.`);
 if (warnings.length > 0) {
   console.log('Hinweise:');
   for (const warning of warnings) console.log(`  - ${warning}`);
