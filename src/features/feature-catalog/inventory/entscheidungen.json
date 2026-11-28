@@ -312,6 +312,49 @@
       ]
     },
     {
+      "id": "decisions.daily-digest",
+      "subarea": "Meldungen",
+      "name": "Optionaler Tagesüberblick",
+      "description": "Freiwilliger morgendlicher Überblick über alle offenen Entscheidungen einer Person. Einmal je Berliner Kalendertag, unabhängig vom lokalen 15-Minuten-Digest, mit Ruhezeiten und Abschalter.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "rollenabhaengig",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "supabase/migrations/20261128240000_decision_daily_digest.sql",
+        "supabase/migrations/20261128241000_decision_daily_digest_selftest.sql",
+        "src/components/notifications/NotificationSettings.tsx",
+        "src/features/selftest/scenarios/decision-lifecycle.ts"
+      ],
+      "rpcs": [
+        "dispatch_decision_daily_digests",
+        "set_decision_daily_digest",
+        "decision_daily_digest_selftest"
+      ],
+      "tables": [
+        "decision_notification_preferences",
+        "decision_daily_digest_deliveries",
+        "task_decisions",
+        "task_decision_participants"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter"
+      ],
+      "dependsOn": ["decisions.notification-digest"],
+      "scenarios": [
+        "decision-lifecycle"
+      ],
+      "docs": [
+        "docs/decision-daily-digest.md"
+      ],
+      "limitations": [
+        "Nicht geprüft: echter Cron-Lauf, Push-Versand, Browserdarstellung und Ruhezeiten über das gesamte Morgenfenster."
+      ]
+    },
+    {
       "id": "decisions.inbox-hygiene",
       "subarea": "Meldungen",
       "name": "Inbox-Hygiene für Entscheidungs-Meldungen",

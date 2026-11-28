@@ -526,6 +526,21 @@ export const decisionLifecycleScenario: TestScenario = {
       },
     },
     {
+      id: "daily-digest", label: "Optionaler Tagesüberblick über mehrere Entscheidungen", kind: "workflow",
+      run: async (ctx) => {
+        const { data, error } = await supabase.rpc("decision_daily_digest_selftest", { p_tenant: ctx.tenantId });
+        if (error) return { ok: false, message: describeError(error) };
+        const report = data as { ok?: boolean; message?: string; skipped?: string; checks?: Record<string, unknown> } | null;
+        return {
+          ok: report?.ok === true,
+          message: report?.ok === true
+            ? "Der Tagesüberblick erscheint einmal pro Tag, wiederholt sich nicht und bleibt nach dem Abschalten aus."
+            : (report?.skipped ?? report?.message ?? "Tagesüberblick-Selbsttest fehlgeschlagen."),
+          details: report?.checks,
+        };
+      },
+    },
+    {
       id: "notification-metrics", label: "Zustellungen, Abschaltquote, Antwortzeit, Anstupser und Trigger-Fehler messen", kind: "workflow",
       run: async (ctx) => {
         const { data, error } = await supabase.rpc("decision_notification_metrics_selftest", { p_tenant: ctx.tenantId });

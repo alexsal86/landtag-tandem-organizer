@@ -3757,6 +3757,38 @@ export type Database = {
           },
         ]
       }
+      decision_daily_digest_deliveries: {
+        Row: {
+          decision_count: number
+          digest_date: string
+          sent_at: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          decision_count: number
+          digest_date: string
+          sent_at?: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          decision_count?: number
+          digest_date?: string
+          sent_at?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_daily_digest_deliveries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decision_deadline_reminders: {
         Row: {
           decision_id: string
@@ -3840,18 +3872,21 @@ export type Database = {
       }
       decision_notification_preferences: {
         Row: {
+          daily_digest_enabled: boolean
           delivery_mode: string
           tenant_id: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          daily_digest_enabled?: boolean
           delivery_mode?: string
           tenant_id: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          daily_digest_enabled?: boolean
           delivery_mode?: string
           tenant_id?: string
           updated_at?: string
@@ -19392,6 +19427,9 @@ export type Database = {
       decision_digest_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_invitation_dispatch_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_delivery_preference_selftest: { Args: { p_tenant: string }; Returns: Json }
+      decision_daily_digest_selftest: { Args: { p_tenant: string }; Returns: Json }
+      dispatch_decision_daily_digests: { Args: { _at?: string }; Returns: number }
+      set_decision_daily_digest: { Args: { _tenant_id: string; _enabled: boolean }; Returns: Json }
       decision_digest_items_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_deadline_reminder_selftest: { Args: { p_tenant: string }; Returns: Json }
       decision_inbox_hygiene_selftest: { Args: { p_tenant: string }; Returns: Json }

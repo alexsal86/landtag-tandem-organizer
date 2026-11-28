@@ -206,6 +206,8 @@ export const NotificationSettings = (): JSX.Element => {
   const [deliveryMode, setDeliveryMode] = useState<DecisionDeliveryMode>('immediate');
   const [deliveryLoading, setDeliveryLoading] = useState<boolean>(false);
   const [deliverySaving, setDeliverySaving] = useState<boolean>(false);
+  const [dailyDigestEnabled, setDailyDigestEnabled] = useState<boolean>(false);
+  const [dailyDigestSaving, setDailyDigestSaving] = useState<boolean>(false);
   const [quietHoursStart, setQuietHoursStart] = useState<string>(DEFAULT_QUIET_HOURS_START);
   const [quietHoursEnd, setQuietHoursEnd] = useState<string>(DEFAULT_QUIET_HOURS_END);
   const [hasActiveSubscription, setHasActiveSubscription] = useState<boolean | null>(null);
@@ -254,7 +256,7 @@ export const NotificationSettings = (): JSX.Element => {
       setDeliveryLoading(true);
       const { data, error } = await supabase
         .from('decision_notification_preferences')
-        .select('delivery_mode')
+        .select('delivery_mode, daily_digest_enabled')
         .eq('user_id', user.id)
         .eq('tenant_id', currentTenant.id)
         .maybeSingle();
@@ -266,6 +268,7 @@ export const NotificationSettings = (): JSX.Element => {
       } else {
         const mode = data?.delivery_mode;
         setDeliveryMode(mode === 'digest' || mode === 'off' ? mode : 'immediate');
+        setDailyDigestEnabled(data?.daily_digest_enabled === true);
       }
       setDeliveryLoading(false);
     };
@@ -488,6 +491,35 @@ export const NotificationSettings = (): JSX.Element => {
     }
   }, [currentTenant, deliveryMode]);
 
+  const saveDailyDigest = useCallback(async (enabled: boolean): Promise<void> => {
+    if (!currentTenant) {
+      notify.error('Kein Arbeitsbereich', { description: 'Bitte zuerst einen Arbeitsbereich wählen.' });
+      return;
+    }
+
+    const previous = dailyDigestEnabled;
+    setDailyDigestEnabled(enabled);
+    setDailyDigestSaving(true);
+    try {
+      const { error } = await supabase.rpc('set_decision_daily_digest', {
+        _tenant_id: currentTenant.id,
+        _enabled: enabled,
+      });
+      if (error) throw error;
+      notify.success('Gespeichert', {
+        description: enabled
+          ? 'Der Tagesüberblick ist aktiviert.'
+          : 'Der Tagesüberblick ist deaktiviert.',
+      });
+    } catch (error: unknown) {
+      setDailyDigestEnabled(previous);
+      debugConsole.error('Error saving daily decision digest:', error);
+      notify.error('Fehler', { description: 'Tagesüberblick konnte nicht gespeichert werden.' });
+    } finally {
+      setDailyDigestSaving(false);
+    }
+  }, [currentTenant, dailyDigestEnabled]);
+
   const updateQuietHours = useCallback(async (): Promise<void> => {
     if (!user) {
       return;
@@ -672,6 +704,22 @@ export const NotificationSettings = (): JSX.Element => {
           <Button onClick={(): void => void saveDeliveryMode()} disabled={deliveryLoading || deliverySaving || !currentTenant}>
             {deliverySaving ? 'Speichert…' : 'Zustellfrequenz speichern'}
           </Button>
+
+          <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+            <div className="space-y-1">
+              <Label htmlFor="daily-decision-digest">Täglicher Überblick</Label>
+              <p className="text-xs text-muted-foreground">
+                Morgens eine Zusammenfassung aller offenen Entscheidungen. Unabhängig vom
+                15-Minuten-Digest und jederzeit abschaltbar.
+              </p>
+            </div>
+            <Switch
+              id="daily-decision-digest"
+              checked={dailyDigestEnabled}
+              onCheckedChange={(checked: boolean): void => void saveDailyDigest(checked)}
+              disabled={deliveryLoading || dailyDigestSaving || !currentTenant}
+            />
+          </div>
         </CardContent>
       </Card>
 

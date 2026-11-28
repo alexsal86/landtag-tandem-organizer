@@ -2,13 +2,13 @@
 
 _Auto-generiert mit `npm run update:feature-catalog` aus den Fremdschlüsseln in `src/integrations/supabase/types.ts`. Nicht von Hand bearbeiten._
 
-368 Tabellen, 511 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
+369 Tabellen, 512 Fremdschlüsselverweise. Die Karte zeigt, welche Tabelle auf welche zeigt; fachliche Bedeutung steht im [Funktionskatalog](./features/README.md).
 
 ## Zentrale Tabellen
 
 Tabellen mit mindestens drei eingehenden Verweisen.
 
-### `tenants` — 150 eingehende Verweise
+### `tenants` — 151 eingehende Verweise
 
 | Von | Spalte |
 |---|---|
@@ -48,6 +48,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `dashboard_decision_nudges` | `tenant_id` |
 | `day_slips` | `tenant_id` |
 | `decision_archive_settings` | `tenant_id` |
+| `decision_daily_digest_deliveries` | `tenant_id` |
 | `decision_deadline_reminders` | `tenant_id` |
 | `decision_invitation_dispatches` | `tenant_id` |
 | `decision_notification_preferences` | `tenant_id` |
@@ -744,6 +745,7 @@ Tabellen mit mindestens drei eingehenden Verweisen.
 | `dashboard_decision_nudges` | `tenant_id` | `tenants` |
 | `day_slips` | `tenant_id` | `tenants` |
 | `decision_archive_settings` | `tenant_id` | `tenants` |
+| `decision_daily_digest_deliveries` | `tenant_id` | `tenants` |
 | `decision_deadline_reminders` | `decision_id` | `task_decisions` |
 | `decision_deadline_reminders` | `tenant_id` | `tenants` |
 | `decision_invitation_dispatches` | `participant_id` | `task_decision_participants` |

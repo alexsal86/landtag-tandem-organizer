@@ -6,8 +6,8 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **19** in **9** Unterbereichen
-- implementiert: **19**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **20** in **9** Unterbereichen
+- implementiert: **20**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **3**
 - ohne Dokumentationsverweis: **9**
 
@@ -31,6 +31,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `decisions.notification-digest` Gebündelte Entscheidungs-Meldungen | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.inbox-hygiene` Inbox-Hygiene für Entscheidungs-Meldungen | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.notification-actions` Meldungen bedienbar machen | Meldungen | fachlich | implementiert | UI | Selbsttest |
+| `decisions.daily-digest` Optionaler Tagesüberblick | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.delivery-preferences` Persönliche Zustellfrequenz und Ruhezeiten | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.notification-metrics` Wirkung der Entscheidungs-Meldungen messen | Meldungen | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `decisions.participants` Teilnehmende und Antwort-Token verwalten | Teilnehmende | fachlich | implementiert | rollenabhängig | Selbsttest |
@@ -53,7 +54,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Datenbanktabellen
 
-`dashboard_decision_nudges`, `decision_archive_settings`, `decision_deadline_reminders`, `decision_email_templates`, `decision_invitation_dispatches`, `decision_matrix_messages`, `decision_notification_preferences`, `decision_notification_trigger_errors`, `email_logs`, `notification_types`, `notifications`, `profiles`, `task_decision_attachments`, `task_decision_comment_reactions`, `task_decision_comments`, `task_decision_participants`, `task_decision_response_history`, `task_decision_responses`, `task_decision_topics`, `task_decision_vote_effects`, `task_decisions`, `tasks`, `tenant_notification_settings`, `user_notification_settings`
+`dashboard_decision_nudges`, `decision_archive_settings`, `decision_daily_digest_deliveries`, `decision_deadline_reminders`, `decision_email_templates`, `decision_invitation_dispatches`, `decision_matrix_messages`, `decision_notification_preferences`, `decision_notification_trigger_errors`, `email_logs`, `notification_types`, `notifications`, `profiles`, `task_decision_attachments`, `task_decision_comment_reactions`, `task_decision_comments`, `task_decision_participants`, `task_decision_response_history`, `task_decision_responses`, `task_decision_topics`, `task_decision_vote_effects`, `task_decisions`, `tasks`, `tenant_notification_settings`, `user_notification_settings`
 
 ## Selbsttest-Szenarien
 
@@ -86,6 +87,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `decision-lifecycle` | `comment-mentions` | Direkte Erwähnungen sofort und außerhalb des Digests zustellen | workflow | — |
 | `decision-lifecycle` | `deadline-reminders` | Frist-Erinnerungen 24 h/2 h einmalig und mit Ruhezeiten | workflow | — |
 | `decision-lifecycle` | `inbox-hygiene` | Anfrage-Meldungen beim Öffnen lesen und beim Archivieren verfallen lassen | workflow | — |
+| `decision-lifecycle` | `daily-digest` | Optionaler Tagesüberblick über mehrere Entscheidungen | workflow | — |
 | `decision-lifecycle` | `notification-metrics` | Zustellungen, Abschaltquote, Antwortzeit, Anstupser und Trigger-Fehler messen | workflow | — |
 | `decision-lifecycle` | `notification-actions` | Aus der Meldung abstimmen und Antwort aktualisieren | workflow | — |
 | `decision-lifecycle` | `digest` | Meldungen werden gebündelt und nur der Digest wird gepusht | workflow | — |
@@ -392,6 +394,44 @@ Fasst offene Kommentar-, Antwort- und Reaktionsmeldungen sowie Ergebnismeldungen
 **Bekannte Einschränkungen**
 
 - Nicht geprüft: echter Cron-Lauf, tatsächlicher Push-Versand, parallele Flush-Läufe und eine Oberfläche für die Mandanteneinstellung. Die Einstellung ist derzeit nur über set_decision_notification_timing erreichbar. Der Ersteller erhält kein Ergebnis-Digest; Frist und Rückzug werden bewusst nicht gebündelt.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
+### `decisions.daily-digest` — Optionaler Tagesüberblick
+Freiwilliger morgendlicher Überblick über alle offenen Entscheidungen einer Person. Einmal je Berliner Kalendertag, unabhängig vom lokalen 15-Minuten-Digest, mit Ruhezeiten und Abschalter.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** rollenabhängig
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`
+- **Routen:** —
+- **Frontend-Komponenten:** —
+- **Services:** —
+- **Hooks:** —
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `dispatch_decision_daily_digests`, `set_decision_daily_digest`, `decision_daily_digest_selftest`
+- **Tabellen:** `decision_notification_preferences`, `decision_daily_digest_deliveries`, `task_decisions`, `task_decision_participants`
+- **Abhängigkeiten:** `decisions.notification-digest`
+- **Selbsttests:** `decision-lifecycle`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** `docs/decision-daily-digest.md`
+
+**Nachweise im Quellcode**
+
+- supabase/migrations/20261128240000_decision_daily_digest.sql
+- supabase/migrations/20261128241000_decision_daily_digest_selftest.sql
+- src/components/notifications/NotificationSettings.tsx
+- src/features/selftest/scenarios/decision-lifecycle.ts
+
+**Bekannte Einschränkungen**
+
+- Nicht geprüft: echter Cron-Lauf, Push-Versand, Browserdarstellung und Ruhezeiten über das gesamte Morgenfenster.
 
 **Offene Prüfpunkte**
 

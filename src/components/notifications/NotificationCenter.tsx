@@ -86,6 +86,7 @@ const getNotificationIcon = (type: string): LucideIcon => {
     case 'task_decision_digest':
     case 'task_decision_deadline_changed':
     case 'task_decision_deadline_reminder':
+    case 'task_decision_daily_digest':
     case 'task_decision_withdrawn':
       return MessageSquare;
     case 'document_created':

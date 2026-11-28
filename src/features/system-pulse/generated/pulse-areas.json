@@ -1336,6 +1336,7 @@
             "decisions.comment-mentions",
             "decisions.comments",
             "decisions.create",
+            "decisions.daily-digest",
             "decisions.deadline-reminders",
             "decisions.delivery-preferences",
             "decisions.digest-items",
@@ -1422,6 +1423,10 @@
             {
               "id": "inbox-hygiene",
               "label": "Anfrage-Meldungen beim Öffnen lesen und beim Archivieren verfallen lassen"
+            },
+            {
+              "id": "daily-digest",
+              "label": "Optionaler Tagesüberblick über mehrere Entscheidungen"
             },
             {
               "id": "notification-metrics",

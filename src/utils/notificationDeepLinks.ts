@@ -51,6 +51,7 @@ export const buildDeepLinkPath = (notification: Notification): string => {
     case 'task_decision_digest':
     case 'task_decision_deadline_changed':
     case 'task_decision_deadline_reminder':
+    case 'task_decision_daily_digest':
     case 'task_decision_withdrawn':
     case 'task_decision_trigger_alert':
     case 'decision_request':
