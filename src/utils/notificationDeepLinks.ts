@@ -1,4 +1,5 @@
 import { annotationDocumentPath } from "@/features/annotations/mentions";
+import { buildAdminHref } from "@/lib/appTargets";
 import { knowledgeQuestionPath } from '@/features/knowledge/logic';
 import type { Notification, NotificationData } from '@/hooks/useNotifications';
 import { isLetterNotificationType } from '@/utils/letterNotificationTypes';
@@ -155,7 +156,7 @@ export const buildDeepLinkPath = (notification: Notification): string => {
     case 'team_announcement_created':
       return '/mywork?tab=team';
     case 'automation_run_failed':
-      return buildHighlightPath('/admin?tab=automation&filter=failed', getNotificationDataId(data, 'run_id'));
+      return buildAdminHref("automation", "rules");
     case 'task_shared':
       return buildHighlightPath('/tasks', getNotificationDataId(data, 'taskId', 'task_id'));
     case 'budget_exceeded':
