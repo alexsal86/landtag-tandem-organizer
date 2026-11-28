@@ -152,6 +152,7 @@
             "Ein Kartenflag wird mit eigenem Flag-Typ und Koordinaten angelegt, mit Typ, Büro und Tags zurückgelesen und wieder gelöscht",
             "Briefingwissen wird angelegt, geändert und gelöscht",
             "Eine Förderung mit Beteiligung des Kontakts wird angelegt, gelesen und doppelte Beteiligungen sind gesperrt",
+            "Archivieren setzt archived_at, blendet den Kontakt aus der aktiven Liste aus, zählt ihn im Archiv und die Wiederherstellung räumt den Status wieder ab",
             "Die gesicherte Kontaktlesung liefert den eigenen Kontakt und keine Zeilen aus fremden Büros",
             "Zusammenführen verschiebt Themen und Briefingwissen mit und löscht den Zweitkontakt"
           ],
@@ -172,6 +173,7 @@
           ],
           "features": [
             "contacts.activities",
+            "contacts.archive",
             "contacts.briefing-memory",
             "contacts.bulk",
             "contacts.detail",
@@ -225,6 +227,10 @@
             {
               "id": "topics",
               "label": "Themen verknüpfen, Duplikate sperren und Verwendung zählen"
+            },
+            {
+              "id": "archive-status",
+              "label": "Archiv ist ein Status: ausblenden, zählen, wiederherstellen"
             },
             {
               "id": "duplicate-scan",

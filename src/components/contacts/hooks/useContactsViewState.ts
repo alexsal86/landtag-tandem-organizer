@@ -126,7 +126,7 @@ export function useContactsViewState(): UseContactsViewStateResult {
     if (!currentTenant?.id) return;
     const today = new Date().toISOString().slice(0, 10);
     void supabase.from("contacts").select("id", { count: "exact", head: true })
-      .eq("tenant_id", currentTenant.id).neq("name", "Archivierter Kontakt")
+      .eq("tenant_id", currentTenant.id).is("archived_at", null)
       .or(`retention_review_date.is.null,retention_review_date.lte.${today}`)
       .then(({ count }) => setReviewDueCount(count ?? 0));
   }, [currentTenant?.id, contacts.length]);
@@ -139,13 +139,14 @@ export function useContactsViewState(): UseContactsViewStateResult {
       { value: "all", label: "Alle Kontakte", count: totalCount },
       { value: "favorites", label: "Favoriten", count: contacts.filter((contact) => contact.is_favorite).length },
       { value: "review_due", label: "Datenschutz-Prüfung fällig", count: reviewDueCount },
+      { value: "archived", label: "Archiviert", count: archiveCount },
       { value: "citizen", label: "Bürger", count: contacts.filter((contact) => contact.category === "citizen").length },
       { value: "colleague", label: "Kollegen", count: contacts.filter((contact) => contact.category === "colleague").length },
       { value: "business", label: "Wirtschaft", count: contacts.filter((contact) => contact.category === "business").length },
       { value: "media", label: "Medien", count: contacts.filter((contact) => contact.category === "media").length },
       { value: "lobbyist", label: "Lobbyisten", count: contacts.filter((contact) => contact.category === "lobbyist").length },
     ],
-    [contacts, totalCount, reviewDueCount],
+    [contacts, totalCount, reviewDueCount, archiveCount],
   );
 
   const handleDeleteContact = async (contactId: string, contactName: string) => {

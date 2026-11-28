@@ -3,7 +3,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { useLocation } from "react-router-dom";
 
 export type ContactViewMode = "grid" | "list";
-export type ContactsTab = "contacts" | "stakeholders" | "stakeholder-network" | "distribution-lists" | "archive";
+export type ContactsTab = "contacts" | "stakeholders" | "stakeholder-network" | "distribution-lists";
 
 const CONTACTS_VIEW_MODE_STORAGE_KEY = "contacts-view-mode";
 const STAKEHOLDERS_VIEW_MODE_STORAGE_KEY = "stakeholders-view-mode";

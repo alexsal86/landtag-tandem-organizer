@@ -166,7 +166,7 @@ export function CaseItemDetailPanel({
         .from("contacts")
         .select("id, name, email, phone, organization")
         .eq("tenant_id", currentTenant.id)
-        .neq("contact_type", "archive")
+        .is('archived_at', null)
         .ilike("name", `%${query}%`)
         .order("is_favorite", { ascending: false })
         .order("name")

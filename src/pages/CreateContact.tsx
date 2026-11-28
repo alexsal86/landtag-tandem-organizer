@@ -31,7 +31,7 @@ import { notify } from "@/lib/notify";
 import { LEGAL_BASIS_OPTIONS, SOURCE_ORIGIN_OPTIONS, defaultLegalBasis, defaultReviewDate, retentionRuleText } from "@/features/contacts/privacy/retention";
 
 type ContactFormData = {
-  contact_type: Exclude<import("@/types/contact").ContactType, "archive">;
+  contact_type: import("@/types/contact").ContactType;
   gender: string;
   name: string;
   role: string;

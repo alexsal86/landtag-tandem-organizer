@@ -63,6 +63,7 @@ export const contactRelationsScenario: TestScenario = {
     "Ein Kartenflag wird mit eigenem Flag-Typ und Koordinaten angelegt, mit Typ, Büro und Tags zurückgelesen und wieder gelöscht",
     "Briefingwissen wird angelegt, geändert und gelöscht",
     "Eine Förderung mit Beteiligung des Kontakts wird angelegt, gelesen und doppelte Beteiligungen sind gesperrt",
+    "Archivieren setzt archived_at, blendet den Kontakt aus der aktiven Liste aus, zählt ihn im Archiv und die Wiederherstellung räumt den Status wieder ab",
     "Die gesicherte Kontaktlesung liefert den eigenen Kontakt und keine Zeilen aus fremden Büros",
     "Zusammenführen verschiebt Themen und Briefingwissen mit und löscht den Zweitkontakt",
   ],
@@ -79,7 +80,7 @@ export const contactRelationsScenario: TestScenario = {
     "Alle Prüfschritte außer dem Setup sind nicht blockierend: ein Policy- oder Triggerfehler wird am Schritt gemeldet, die folgenden Schritte laufen weiter.",
   ],
   writes: [
-    { table: "contacts", columns: ["name", "user_id", "tenant_id", "email", "phone", "category", "tags", "notes", "created_at"] },
+    { table: "contacts", columns: ["name", "user_id", "tenant_id", "email", "phone", "category", "tags", "notes", "created_at", "archived_at", "archive_reason", "archived_by"] },
     { table: "contact_activities", columns: ["contact_id", "tenant_id", "created_by", "activity_type", "title", "description"] },
     { table: "contact_topics", columns: ["tenant_id", "contact_id", "topic_id"] },
     { table: "topics", columns: ["label", "tenant_id"] },
@@ -603,6 +604,65 @@ export const contactRelationsScenario: TestScenario = {
             ? "Themenverknüpfung ist eindeutig, topic_usage zählt Kontakte und folgt dem Löschen."
             : `Fehlgeschlagen: ${failed.join(", ")}`,
           details: { ...checks, beforeDelete, remaining },
+        };
+      },
+    },
+    {
+      id: "archive-status",
+      label: "Archiv ist ein Status: ausblenden, zählen, wiederherstellen",
+      kind: "workflow", critical: false,
+      run: async (ctx) => {
+        const created = await supabase.from("contacts").insert({
+          name: stamp(ctx.runId, "Archivkontakt"), user_id: ctx.userId, tenant_id: ctx.tenantId,
+          category: "citizen", notes: SELFTEST_MARKER,
+        }).select("id, archived_at").single();
+        if (created.error || !created.data) return { ok: false, message: describeError(created.error) };
+        ctx.trackRecord({ table: "contacts", id: created.data.id });
+        const archiveContactId: string = created.data.id;
+
+        const archived = await supabase.rpc("archive_contact", {
+          p_contact_id: archiveContactId, p_reason: "Selbsttest Archiv",
+        });
+        if (archived.error) return { ok: false, message: `Archivieren: ${describeError(archived.error)}` };
+
+        // Der Status ist die einzige Quelle: kein eigener Tab, kein Namenssentinel.
+        const active = await supabase.from("contacts").select("id")
+          .eq("tenant_id", ctx.tenantId).eq("contact_type", "person")
+          .is("archived_at", null).eq("id", archiveContactId);
+        const archivedList = await supabase.from("contacts").select("id, archive_reason")
+          .eq("tenant_id", ctx.tenantId).not("archived_at", "is", null).eq("id", archiveContactId);
+        const counts = await supabase.rpc("get_contact_counts", { p_tenant_id: ctx.tenantId });
+        const countsPayload = counts.data as unknown as { archiveCount?: number } | null;
+
+        const secondArchive = await supabase.rpc("archive_contact", {
+          p_contact_id: archiveContactId, p_reason: "nochmal",
+        });
+        const restored = await supabase.rpc("unarchive_contact", { p_contact_id: archiveContactId });
+        const after = await supabase.from("contacts")
+          .select("id, archived_at, archive_reason").eq("id", archiveContactId).maybeSingle();
+
+        type ArchiveResult = { status?: string };
+        const archiveStatus = (archived.data as unknown as ArchiveResult | null)?.status;
+        const secondStatus = (secondArchive.data as unknown as ArchiveResult | null)?.status;
+        const restoreStatus = (restored.data as unknown as ArchiveResult | null)?.status;
+
+        const checks = {
+          statusGesetzt: archiveStatus === "archived",
+          nichtInAktiverListe: !active.error && (active.data ?? []).length === 0,
+          imArchivFilter: (archivedList.data ?? []).length === 1
+            && archivedList.data?.[0]?.archive_reason === "Selbsttest Archiv",
+          gezaehlt: (countsPayload?.archiveCount ?? 0) >= 1,
+          doppeltesArchivierenIdempotent: !secondArchive.error && secondStatus === "already_archived",
+          wiederhergestellt: !restored.error && restoreStatus === "restored"
+            && after.data?.archived_at === null && after.data?.archive_reason === null,
+        };
+        const failed = Object.entries(checks).filter(([, ok]) => !ok).map(([name]) => name);
+        return {
+          ok: failed.length === 0,
+          message: failed.length === 0
+            ? "Archivieren blendet den Kontakt aus, zählt ihn im Archiv, ist idempotent und die Wiederherstellung räumt den Status vollständig ab."
+            : `Fehlgeschlagen: ${failed.join(", ")}`,
+          details: { ...checks, archiveCount: countsPayload?.archiveCount },
         };
       },
     },

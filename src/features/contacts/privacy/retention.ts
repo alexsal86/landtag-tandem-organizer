@@ -15,6 +15,7 @@ export const SOURCE_ORIGIN_OPTIONS = [
   { value: "public_register", label: "Öffentliches Verzeichnis" },
   { value: "recommendation", label: "Empfehlung" },
   { value: "import", label: "Import" },
+  { value: "call_followup", label: "Anruf-Follow-up (unbekannte Nummer)" },
   { value: "other", label: "Sonstiges" },
 ] as const;
 

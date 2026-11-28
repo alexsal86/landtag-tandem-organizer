@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Trash2, Mail, Phone, MapPin, Building, Star } from "lucide-react";
+import { ArrowLeft, Trash2, Mail, Phone, MapPin, Building, Star, Archive, RotateCcw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ActivityTimeline, type Activity } from "@/components/contacts/ActivityTimeline";
@@ -23,6 +26,9 @@ export default function ContactDetail() {
   const [loading, setLoading] = useState(true);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(false);
+  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
+  const [archiveReason, setArchiveReason] = useState("");
+  const [archiveBusy, setArchiveBusy] = useState(false);
 
   useEffect(() => {
     if (id && user) {
@@ -36,7 +42,7 @@ export default function ContactDetail() {
       setLoading(true);
       const { data, error } = await supabase
         .from('contacts')
-        .select('id, name, role:position, organization, email, phone, location, category, priority, last_contact, avatar_url, notes')
+        .select('id, name, role:position, organization, email, phone, location, category, priority, last_contact, avatar_url, notes, archived_at, archive_reason')
         .eq('id', id!)
         .single();
 
@@ -56,6 +62,8 @@ export default function ContactDetail() {
           last_contact: data.last_contact,
           avatar_url: data.avatar_url,
           notes: data.notes,
+          archived_at: data.archived_at,
+          archive_reason: data.archive_reason,
         });
       }
     } catch (error) {
@@ -214,6 +222,51 @@ export default function ContactDetail() {
     navigate(`/contacts/${id}/edit`);
   };
 
+  const handleArchive = async (): Promise<void> => {
+    if (!contact) return;
+    setArchiveBusy(true);
+    try {
+      const { error } = await supabase.rpc("archive_contact", {
+        p_contact_id: contact.id,
+        p_reason: archiveReason.trim() || null,
+      });
+      if (error) throw error;
+      notify.success("Kontakt archiviert", {
+        description: `${contact.name} ist nur noch im Archiv sichtbar und bleibt vollständig erhalten.`,
+      });
+      setIsArchiveDialogOpen(false);
+      setArchiveReason("");
+      await fetchContact();
+    } catch (error) {
+      debugConsole.error('Error archiving contact:', error);
+      notify.error("Fehler", {
+        description: "Kontakt konnte nicht archiviert werden."
+      });
+    } finally {
+      setArchiveBusy(false);
+    }
+  };
+
+  const handleRestore = async (): Promise<void> => {
+    if (!contact) return;
+    setArchiveBusy(true);
+    try {
+      const { error } = await supabase.rpc("unarchive_contact", { p_contact_id: contact.id });
+      if (error) throw error;
+      notify.success("Kontakt wiederhergestellt", {
+        description: `${contact.name} ist wieder in der Kontaktliste sichtbar.`,
+      });
+      await fetchContact();
+    } catch (error) {
+      debugConsole.error('Error restoring contact:', error);
+      notify.error("Fehler", {
+        description: "Kontakt konnte nicht wiederhergestellt werden."
+      });
+    } finally {
+      setArchiveBusy(false);
+    }
+  };
+
   const detailLineParts = [contact.role, contact.organization].filter(
     (value): value is string => Boolean(value && value.trim()),
   );
@@ -222,6 +275,13 @@ export default function ContactDetail() {
   return (
     <main id="main-content" className="min-h-screen bg-gradient-subtle p-6 md:p-8" tabIndex={-1}>
       <div className="max-w-6xl mx-auto">
+        {contact.archived_at && (
+          <div role="status" className="mb-4 rounded-lg border border-border bg-muted/40 p-4 text-sm">
+            <span className="font-medium">Archiviert am {new Date(contact.archived_at).toLocaleDateString("de-DE")}.</span>{" "}
+            Der Kontakt ist aus Listen und Auswahlfeldern ausgeblendet, alle Verknüpfungen und die Historie bleiben erhalten.
+            {contact.archive_reason ? ` Grund: ${contact.archive_reason}` : ""}
+          </div>
+        )}
         {/* Header with Back Button */}
         <div className="flex items-center justify-between mb-10">
           <Button
@@ -238,7 +298,18 @@ export default function ContactDetail() {
             <Button variant="ghost" size="icon" aria-label="Favorisieren" className="h-11 w-11">
               <Star className="h-6 w-6" />
             </Button>
-            <Button onClick={handleEdit} className="h-11 rounded-full px-8 text-lg">
+            {contact.archived_at ? (
+              <Button variant="outline" onClick={handleRestore} disabled={archiveBusy} className="h-11 gap-2">
+                <RotateCcw className="h-4 w-4" />
+                Wiederherstellen
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={() => setIsArchiveDialogOpen(true)} className="h-11 gap-2">
+                <Archive className="h-4 w-4" />
+                Archivieren
+              </Button>
+            )}
+            <Button onClick={handleEdit} disabled={Boolean(contact.archived_at)} className="h-11 rounded-full px-8 text-lg">
               Bearbeiten
             </Button>
             <Button
@@ -286,6 +357,9 @@ export default function ContactDetail() {
                       <Badge variant="outline">
                         Priorität: {getPriorityLabel(contact.priority)}
                       </Badge>
+                      {contact.archived_at && (
+                        <Badge variant="secondary">Archiviert</Badge>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -407,6 +481,37 @@ export default function ContactDetail() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={isArchiveDialogOpen} onOpenChange={setIsArchiveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Kontakt archivieren?</DialogTitle>
+            <DialogDescription>
+              {contact.name} verschwindet aus Kontaktliste, Auswahlfeldern und Verteilern, bleibt aber
+              mit allen Aktivitäten, Dokumenten und Verknüpfungen erhalten und ist jederzeit
+              wiederherstellbar. Zum endgültigen Löschen nutzen Sie den DSGVO-Löschantrag.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="archive-reason">Grund (optional)</Label>
+            <Textarea
+              id="archive-reason"
+              value={archiveReason}
+              onChange={(event) => setArchiveReason(event.target.value)}
+              placeholder="z. B. Zuständigkeit gewechselt, kein Kontakt mehr"
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsArchiveDialogOpen(false)} disabled={archiveBusy}>
+              Abbrechen
+            </Button>
+            <Button onClick={handleArchive} disabled={archiveBusy}>
+              Archivieren
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

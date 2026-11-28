@@ -12,7 +12,7 @@ export type { Contact } from "@/types/contact";
 interface UseInfiniteContactsProps {
   searchTerm?: string;
   selectedCategory?: string;
-  activeTab?: "contacts" | "stakeholders" | "stakeholder-network" | "distribution-lists" | "archive";
+  activeTab?: "contacts" | "stakeholders" | "stakeholder-network" | "distribution-lists";
   sortColumn?: string | null;
   sortDirection?: "asc" | "desc";
   selectedTagFilter?: string;
@@ -52,18 +52,24 @@ export const useInfiniteContacts = ({
         // Felder für Listenansicht (Detail-only: website, twitter, facebook, instagram, xing, business_street/postal/country/house_number)
         'id, contact_type, name, role:position, organization, organization_id, email, phone, ' +
         'avatar_url, is_favorite, category, priority, last_contact, gender, ' +
-        'address, business_city, birthday, notes, linkedin',
+        'address, business_city, birthday, notes, linkedin, archived_at',
         { count: 'planned' }
       )
       .eq('tenant_id', tenantId || '');
 
+    // Archiv ist ein Status, kein eigener Tab: archivierte Kontakte erscheinen
+    // ausschließlich im Archiv-Filter der Personenliste und nie in den übrigen Listen.
+    if (selectedCategory === "archived" && activeTab === "contacts") {
+      query = query.not('archived_at', 'is', null);
+    } else {
+      query = query.is('archived_at', null);
+    }
+
     // Filter by tab
     if (activeTab === "contacts") {
-      query = query.eq('contact_type', 'person').neq('name', 'Archivierter Kontakt');
+      query = query.eq('contact_type', 'person');
     } else if (activeTab === "stakeholders" || activeTab === "stakeholder-network") {
       query = query.eq('contact_type', 'organization');
-    } else if (activeTab === "archive") {
-      query = query.eq('name', 'Archivierter Kontakt');
     }
 
     // Search filter: quoted values keep commas and parentheses literal, and the
@@ -73,8 +79,8 @@ export const useInfiniteContacts = ({
       query = query.or(searchFilter);
     }
 
-    // Category filter
-    if (selectedCategory !== "all") {
+    // Category filter (der Archiv-Filter ist bereits oben gesetzt)
+    if (selectedCategory !== "all" && selectedCategory !== "archived") {
       if (selectedCategory === "favorites") {
         query = query.eq('is_favorite', true);
       } else if (selectedCategory === "review_due") {
@@ -163,7 +169,7 @@ export const useInfiniteContacts = ({
 
       const formattedContacts = data?.map((contact: Record<string, any>) => ({
         id: contact.id,
-        contact_type: (contact.contact_type as "person" | "organization" | "archive") || "person",
+        contact_type: (contact.contact_type as "person" | "organization") || "person",
         name: contact.name,
         role: contact.role,
         organization: contact.organization,
@@ -179,6 +185,7 @@ export const useInfiniteContacts = ({
         avatar_url: contact.avatar_url,
         notes: contact.notes,
         is_favorite: contact.is_favorite,
+        archived_at: contact.archived_at,
         gender: contact.gender,
         topic_ids: topicMap[contact.id] ?? [],
         // Detail-only Felder (nicht in Listenansicht geladen): website, twitter, facebook, instagram, xing, business_street/postal/country/house_number

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Search, Plus, Building, User, Users, Archive, Network, Tag, Copy } from "lucide-react";
+import { Search, Plus, Building, User, Users, Network, Tag, Copy } from "lucide-react";
 import type { ContactsTab } from "./hooks/useContactsViewPreferences";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,6 @@ interface ContactsSidePanelProps {
   contactsCount: number;
   stakeholdersCount: number;
   distributionListsCount: number;
-  archiveCount: number;
   navigate: (path: string) => void;
   setCreatingDistribution: (val: boolean) => void;
   setIsDuplicateSheetOpen: (val: boolean) => void;
@@ -32,7 +31,6 @@ export function ContactsSidePanel({
   contactsCount,
   stakeholdersCount,
   distributionListsCount,
-  archiveCount,
   navigate,
   setCreatingDistribution,
   setIsDuplicateSheetOpen,
@@ -42,7 +40,6 @@ export function ContactsSidePanel({
     { key: "stakeholders", label: "Stakeholder", icon: Building, count: stakeholdersCount, path: "/contacts/stakeholder" },
     { key: "stakeholder-network", label: "Netzwerk", icon: Network, count: null, path: "/contacts/netzwerk" },
     { key: "distribution-lists", label: "Verteiler", icon: Users, count: distributionListsCount, path: "/contacts" },
-    { key: "archive", label: "Archiv", icon: Archive, count: archiveCount, path: "/contacts" },
   ];
 
   return (

@@ -46,7 +46,7 @@ export const useAllPersonContacts = () => {
           .select(PERSON_CONTACT_SELECT)
           .eq("tenant_id", currentTenant.id)
           .eq("contact_type", "person")
-          .neq("name", "Archivierter Kontakt")
+          .is("archived_at", null)
           .order("name")
           .range(from, to);
 
@@ -83,7 +83,7 @@ export const useAllPersonContacts = () => {
         .eq("tenant_id", currentTenant.id)
         .eq("id", contactId)
         .eq("contact_type", "person")
-        .neq("name", "Archivierter Kontakt")
+        .is("archived_at", null)
         .maybeSingle();
 
       if (error) {

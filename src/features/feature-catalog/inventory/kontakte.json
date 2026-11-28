@@ -150,10 +150,63 @@
       ]
     },
     {
+      "id": "contacts.archive",
+      "subarea": "Stammdaten",
+      "name": "Kontakte archivieren und wiederherstellen",
+      "description": "Archiviert Kontakte über archived_at mit optionalem Grund: sie verschwinden aus Listen, Auswahlfeldern und Zählern, bleiben aber lesbar, behalten alle Verknüpfungen und sind wiederherstellbar. Endgültiges Löschen bleibt der DSGVO-Pfad.",
+      "category": "fachlich",
+      "implementationStatus": "implementiert",
+      "integrationStatus": "ui",
+      "coverage": "selftest",
+      "testResult": "nicht-ausgefuehrt",
+      "evidence": [
+        "src/pages/ContactDetail.tsx",
+        "src/hooks/useInfiniteContacts.tsx",
+        "src/components/contacts/hooks/useContactsViewState.ts"
+      ],
+      "routes": [
+        "/contacts",
+        "/contacts/:id"
+      ],
+      "components": [
+        "src/pages/ContactDetail.tsx",
+        "src/features/contacts/components/ContactsView.tsx"
+      ],
+      "hooks": [
+        "src/hooks/useInfiniteContacts.tsx",
+        "src/hooks/useCounts.tsx",
+        "src/components/contacts/hooks/useContactsViewState.ts"
+      ],
+      "rpcs": [
+        "archive_contact",
+        "unarchive_contact",
+        "get_contact_counts"
+      ],
+      "tables": [
+        "contacts"
+      ],
+      "roles": [
+        "abgeordneter",
+        "bueroleitung",
+        "mitarbeiter",
+        "praktikant"
+      ],
+      "dependsOn": [
+        "contacts.detail"
+      ],
+      "scenarios": [
+        "contact-relations"
+      ],
+      "limitations": [
+        "Der Selbsttest prüft Status, Listenausschluss, Zähler und Wiederherstellung; das Bestätigungsdialogfeld selbst wird nicht gerendert.",
+        "Archiv ist keine Löschung: DSGVO-Löschanfragen laufen unverändert über gdpr_requests."
+      ]
+    },
+    {
       "id": "contacts.list-search",
       "subarea": "Recherche",
       "name": "Kontaktliste mit Suche und Filtern",
-      "description": "Zeigt Kontakte und Organisationen in Liste oder Grid, durchsucht Name, Organisation, Position, E-Mail, Telefon und Adresse mit Sonderzeichen-sicherer Filterung und filtert nach Kategorie, Favoriten, Themen und Prüffrist.",
+      "description": "Zeigt Kontakte und Organisationen in Liste oder Grid, durchsucht Name, Organisation, Position, E-Mail, Telefon und Adresse mit Sonderzeichen-sicherer Filterung und filtert nach Kategorie, Favoriten, Themen, Prüffrist und Archivstatus.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",

@@ -6,10 +6,10 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 
 ## Kennzahlen
 
-- Funktionen: **15** in **10** Unterbereichen
-- implementiert: **15**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
+- Funktionen: **16** in **10** Unterbereichen
+- implementiert: **16**, teilweise: **0**, deaktiviert: **0**, potenziell verwaist: **0**
 - ohne zugeordneten Test: **0**
-- ohne Dokumentationsverweis: **11**
+- ohne Dokumentationsverweis: **12**
 
 ## Funktionen
 
@@ -27,6 +27,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | `contacts.list-search` Kontaktliste mit Suche und Filtern | Recherche | fachlich | implementiert | UI | Selbsttest |
 | `contacts.create` Kontakt anlegen | Stammdaten | fachlich | implementiert | rollenabhängig | Selbsttest |
 | `contacts.edit` Kontakt bearbeiten | Stammdaten | fachlich | implementiert | rollenabhängig | Selbsttest |
+| `contacts.archive` Kontakte archivieren und wiederherstellen | Stammdaten | fachlich | implementiert | UI | Selbsttest |
 | `contacts.detail` Kontaktprofil mit Aktivitäten | Stammdaten | fachlich | implementiert | UI | Selbsttest |
 | `contacts.tags-topics` Kontakt-Themen | Struktur | fachlich | implementiert | UI | Selbsttest |
 | `contacts.distribution-lists` Verteilerlisten verwalten | Verteiler | fachlich | implementiert | UI | Selbsttest |
@@ -57,7 +58,7 @@ _Auto-generiert mit `npm run update:feature-catalog` aus dem zentralen Funktions
 | Szenario | Titel | deklarierte Tabellen | deklarierte Prüfungen | letzter Lauf |
 |---|---|---:|---:|---|
 | `contact-lifecycle` | Kontakt-Lifecycle (Anlegen → Kategorie/Tags → Aktivität → Suche) | 3 | 0 | — |
-| `contact-relations` | Kontakt-Beziehungen (Datenschutz → Themen → Duplikate → Sammelaktion → Verteiler → Wissen → Förderungen) | 13 | 22 | — |
+| `contact-relations` | Kontakt-Beziehungen (Datenschutz → Themen → Duplikate → Sammelaktion → Verteiler → Wissen → Förderungen) | 13 | 23 | — |
 
 ## Selbsttest-Schritte
 
@@ -82,6 +83,7 @@ Diese Schritte führen die Szenarien aus; „letzter Lauf“ stammt aus `src/fea
 | `contact-relations` | `import-assignment` | Importzeile anlegen und über die Verteiler-Spalte zuordnen | db | — |
 | `contact-relations` | `activity-triggers` | Anlegen, Bearbeiten und Anrufe protokollieren Aktivitäten automatisch | db | — |
 | `contact-relations` | `topics` | Themen verknüpfen, Duplikate sperren und Verwendung zählen | db | — |
+| `contact-relations` | `archive-status` | Archiv ist ein Status: ausblenden, zählen, wiederherstellen | workflow | — |
 | `contact-relations` | `duplicate-scan` | Dubletten-Scan findet Kontakte im eigenen Büro und bleibt mandantengetrennt | db | — |
 | `contact-relations` | `bulk-update` | Sammelbearbeitung ändert mehrere Kontakte und protokolliert die Rücknahme | db | — |
 | `contact-relations` | `distribution-list` | Verteiler mit Stakeholder und Personen anlegen, prüfen und löschen | db | — |
@@ -119,8 +121,9 @@ Keine Prüfungen deklariert.
 18. Ein Kartenflag wird mit eigenem Flag-Typ und Koordinaten angelegt, mit Typ, Büro und Tags zurückgelesen und wieder gelöscht
 19. Briefingwissen wird angelegt, geändert und gelöscht
 20. Eine Förderung mit Beteiligung des Kontakts wird angelegt, gelesen und doppelte Beteiligungen sind gesperrt
-21. Die gesicherte Kontaktlesung liefert den eigenen Kontakt und keine Zeilen aus fremden Büros
-22. Zusammenführen verschiebt Themen und Briefingwissen mit und löscht den Zweitkontakt
+21. Archivieren setzt archived_at, blendet den Kontakt aus der aktiven Liste aus, zählt ihn im Archiv und die Wiederherstellung räumt den Status wieder ab
+22. Die gesicherte Kontaktlesung liefert den eigenen Kontakt und keine Zeilen aus fremden Büros
+23. Zusammenführen verschiebt Themen und Briefingwissen mit und löscht den Zweitkontakt
 
 ## Funktionsdetails
 
@@ -233,8 +236,46 @@ Zeigt Stammdaten, Aktivitäten, Dokumente, Finanzierungen, Themen, Vorgänge und
 
 - Keine.
 
+### `contacts.archive` — Kontakte archivieren und wiederherstellen
+Archiviert Kontakte über archived_at mit optionalem Grund: sie verschwinden aus Listen, Auswahlfeldern und Zählern, bleiben aber lesbar, behalten alle Verknüpfungen und sind wiederherstellbar. Endgültiges Löschen bleibt der DSGVO-Pfad.
+
+- **Kategorie:** fachlich
+- **Implementierung:** implementiert
+- **Einbindung:** UI
+- **Testabdeckung:** Selbsttest
+- **Letztes Testergebnis:** nicht-ausgefuehrt (kein Laufnachweis importiert; nicht aus der Existenz einer Testdatei abgeleitet)
+- **Rollen:** `abgeordneter`, `bueroleitung`, `mitarbeiter`, `praktikant`
+- **Routen:** `/contacts`, `/contacts/:id`
+- **Frontend-Komponenten:** `src/pages/ContactDetail.tsx`, `src/features/contacts/components/ContactsView.tsx`
+- **Services:** —
+- **Hooks:** `src/hooks/useInfiniteContacts.tsx`, `src/hooks/useCounts.tsx`, `src/components/contacts/hooks/useContactsViewState.ts`
+- **Edge Functions:** —
+- **Datenbankfunktionen:** `archive_contact`, `unarchive_contact`, `get_contact_counts`
+- **Tabellen:** `contacts`
+- **Abhängigkeiten:** `contacts.detail`
+- **Selbsttests:** `contact-relations`
+- **Unit-Tests:** —
+- **Integrationstests:** —
+- **Browser-Tests:** —
+- **Dokumentation:** —
+
+**Nachweise im Quellcode**
+
+- src/pages/ContactDetail.tsx
+- src/hooks/useInfiniteContacts.tsx
+- src/components/contacts/hooks/useContactsViewState.ts
+
+**Bekannte Einschränkungen**
+
+- Der Selbsttest prüft Status, Listenausschluss, Zähler und Wiederherstellung; das Bestätigungsdialogfeld selbst wird nicht gerendert.
+- Archiv ist keine Löschung: DSGVO-Löschanfragen laufen unverändert über gdpr_requests.
+
+**Offene Prüfpunkte**
+
+- Keine.
+
 ### `contacts.list-search` — Kontaktliste mit Suche und Filtern
-Zeigt Kontakte und Organisationen in Liste oder Grid, durchsucht Name, Organisation, Position, E-Mail, Telefon und Adresse mit Sonderzeichen-sicherer Filterung und filtert nach Kategorie, Favoriten, Themen und Prüffrist.
+Zeigt Kontakte und Organisationen in Liste oder Grid, durchsucht Name, Organisation, Position, E-Mail, Telefon und Adresse mit Sonderzeichen-sicherer Filterung und filtert nach Kategorie, Favoriten, Themen, Prüffrist und Archivstatus.
 
 - **Kategorie:** fachlich
 - **Implementierung:** implementiert

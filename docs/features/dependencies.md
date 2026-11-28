@@ -93,6 +93,7 @@ _Auto-generiert mit `npm run update:feature-catalog`. Nicht von Hand bearbeiten.
 | `chat.team-announcements` | `chat.messages` |
 | `contacts.edit` | `contacts.create` |
 | `contacts.detail` | `contacts.create` |
+| `contacts.archive` | `contacts.detail` |
 | `contacts.list-search` | `contacts.create` |
 | `contacts.import` | `contacts.create` |
 | `contacts.duplicates` | `contacts.create` |

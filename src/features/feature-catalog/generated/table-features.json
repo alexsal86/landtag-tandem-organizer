@@ -898,6 +898,11 @@
       "area": "verwaltung"
     },
     {
+      "id": "contacts.archive",
+      "name": "Kontakte archivieren und wiederherstellen",
+      "area": "kontakte"
+    },
+    {
       "id": "contacts.briefing-memory",
       "name": "Briefingwissen je Kontakt",
       "area": "kontakte"
