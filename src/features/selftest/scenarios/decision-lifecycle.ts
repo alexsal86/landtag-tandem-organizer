@@ -35,7 +35,8 @@ export const decisionLifecycleScenario: TestScenario = {
     "Das Anmahnen speichert den Eintrag mit Absender und Notiz und weist die zweite Mahnung innerhalb von 24 Stunden ab",
     "Anstupsen ist auf die eigene offene Entscheidung beschränkt; ohne wartenden Abgeordneten wird abgewiesen",
     "Anfrage-, Kommentar-, Reaktions-, Ersteller-Antwort- und Abschlussmeldung entstehen im Mandanten der Entscheidung",
-    "Der Ersteller erhält vor Ablauf und einmalig bei Überfälligkeit eine Warnung mit der Zahl fehlender Antworten",
+    "Der Ersteller erhält vor Ablauf und einmalig bei Überfälligkeit eine Warnung mit der Zahl fehlender Antworten und offener Rückfragen samt Alter der ältesten",
+    "Der Tagesüberblick nennt offene Rückfragen einer eigenen Entscheidung samt Alter der ältesten",
     "Teilnehmer-Insert stellt genau eine Einladungs-Versandzeile ein, die der Worker übernimmt und verbucht",
   ],
   limitations: [
@@ -512,7 +513,7 @@ export const decisionLifecycleScenario: TestScenario = {
       },
     },
     {
-      id: "creator-deadline-warnings", label: "Ersteller-Warnung vor Ablauf und einmalig bei Überfälligkeit", kind: "workflow",
+      id: "creator-deadline-warnings", label: "Ersteller-Warnung vor Ablauf, bei Überfälligkeit und zu offenen Rückfragen", kind: "workflow",
       run: async (ctx) => {
         const { data, error } = await supabase.rpc("decision_creator_deadline_warning_selftest", { p_tenant: ctx.tenantId });
         if (error) return { ok: false, message: describeError(error) };
@@ -520,7 +521,7 @@ export const decisionLifecycleScenario: TestScenario = {
         return {
           ok: report?.ok === true,
           message: report?.ok === true
-            ? "Der Ersteller erhält vor Ablauf und einmal bei Überfälligkeit eine Warnung mit der aktuellen Zahl fehlender Antworten; ohne offene Antworten bleibt sie aus."
+            ? "Der Ersteller erhält vor Ablauf und einmal bei Überfälligkeit eine Warnung mit der Zahl fehlender Antworten sowie offenen Rückfragen samt Alter und Antwortbitte; ohne fehlende Antworten und offene Rückfrage bleibt sie aus."
             : (report?.skipped ?? report?.message ?? "Ersteller-Fristwarnungs-Selbsttest fehlgeschlagen."),
           details: report?.checks,
         };
@@ -587,7 +588,7 @@ export const decisionLifecycleScenario: TestScenario = {
       },
     },
     {
-      id: "daily-digest", label: "Optionaler Tagesüberblick über mehrere Entscheidungen", kind: "workflow",
+      id: "daily-digest", label: "Optionaler Tagesüberblick über mehrere Entscheidungen und eigene Rückfragen", kind: "workflow",
       run: async (ctx) => {
         const { data, error } = await supabase.rpc("decision_daily_digest_selftest", { p_tenant: ctx.tenantId });
         if (error) return { ok: false, message: describeError(error) };
@@ -595,7 +596,7 @@ export const decisionLifecycleScenario: TestScenario = {
         return {
           ok: report?.ok === true,
           message: report?.ok === true
-            ? "Der Tagesüberblick erscheint einmal pro Tag, wiederholt sich nicht und bleibt nach dem Abschalten aus."
+            ? "Der Tagesüberblick erscheint einmal pro Tag, nennt offene Rückfragen mit Alter und Antwortbitte, wiederholt sich nicht und bleibt nach dem Abschalten aus."
             : (report?.skipped ?? report?.message ?? "Tagesüberblick-Selbsttest fehlgeschlagen."),
           details: report?.checks,
         };

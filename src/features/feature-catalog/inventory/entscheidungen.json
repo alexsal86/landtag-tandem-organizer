@@ -315,7 +315,7 @@
       "id": "decisions.daily-digest",
       "subarea": "Meldungen",
       "name": "Optionaler Tagesüberblick",
-      "description": "Freiwilliger morgendlicher Überblick über alle offenen Entscheidungen einer Person. Einmal je Berliner Kalendertag, unabhängig vom lokalen 15-Minuten-Digest, mit Ruhezeiten und Abschalter.",
+      "description": "Freiwilliger morgendlicher Überblick über alle offenen Entscheidungen einer Person. Einmal je Berliner Kalendertag, unabhängig vom lokalen 15-Minuten-Digest, mit Ruhezeiten und Abschalter. Zusätzlich nimmt er selbst erstellte Entscheidungen mit unbeantworteten Rückfragen auf und nennt deren Anzahl samt Alter der ältesten Rückfrage mit der Bitte um Antwort.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
@@ -324,19 +324,24 @@
       "evidence": [
         "supabase/migrations/20261128240000_decision_daily_digest.sql",
         "supabase/migrations/20261128241000_decision_daily_digest_selftest.sql",
+        "supabase/migrations/20261128250000_decision_open_question_reminders.sql",
+        "supabase/migrations/20261128251000_decision_open_question_reminders_selftest.sql",
         "src/components/notifications/NotificationSettings.tsx",
         "src/features/selftest/scenarios/decision-lifecycle.ts"
       ],
       "rpcs": [
         "dispatch_decision_daily_digests",
         "set_decision_daily_digest",
-        "decision_daily_digest_selftest"
+        "decision_daily_digest_selftest",
+        "decision_open_question_stats",
+        "decision_question_age_label"
       ],
       "tables": [
         "decision_notification_preferences",
         "decision_daily_digest_deliveries",
         "task_decisions",
-        "task_decision_participants"
+        "task_decision_participants",
+        "task_decision_responses"
       ],
       "roles": [
         "abgeordneter",
@@ -442,7 +447,7 @@
       "id": "decisions.creator-deadline-warnings",
       "subarea": "Meldungen",
       "name": "Fristwarnungen für den Ersteller",
-      "description": "Warnt den Ersteller, wenn die Antwortfrist innerhalb von 24 Stunden endet, und genau einmal, wenn sie überschritten ist. Beide Warnungen nennen die aktuelle Zahl der Teilnehmenden ohne Hauptantwort; sind alle Antworten da, bleibt die Warnung aus. Die Warnung nutzt den Frist-Erinnerungstyp ohne Schnellantworten und respektiert Ruhezeiten.",
+      "description": "Warnt den Ersteller, wenn die Antwortfrist innerhalb von 24 Stunden endet, und genau einmal, wenn sie überschritten ist. Beide Warnungen nennen die aktuelle Zahl der Teilnehmenden ohne Hauptantwort sowie die offenen Rückfragen mit dem Alter der ältesten und der Bitte um Antwort. Dadurch bleibt die Warnung auch bestehen, wenn alle geantwortet haben, aber eine Rückfrage unbeantwortet ist; ohne fehlende Antworten und ohne offene Rückfrage entfällt sie. Die Warnung nutzt den Frist-Erinnerungstyp ohne Schnellantworten und respektiert Ruhezeiten.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "rollenabhaengig",
@@ -451,6 +456,8 @@
       "evidence": [
         "supabase/migrations/20261128248000_decision_creator_deadline_warnings.sql",
         "supabase/migrations/20261128249000_decision_creator_deadline_warnings_selftest.sql",
+        "supabase/migrations/20261128250000_decision_open_question_reminders.sql",
+        "supabase/migrations/20261128251000_decision_open_question_reminders_selftest.sql",
         "src/components/notifications/DecisionQuickResponse.tsx",
         "src/features/selftest/scenarios/decision-lifecycle.ts"
       ],
@@ -459,6 +466,8 @@
       ],
       "rpcs": [
         "dispatch_decision_deadline_reminders",
+        "decision_open_question_stats",
+        "decision_question_age_label",
         "decision_creator_deadline_warning_selftest"
       ],
       "tables": [
@@ -481,7 +490,7 @@
         "docs/decision-deadline-reminders.md"
       ],
       "limitations": [
-        "Nicht geprüft: echter Cron-Lauf, Push-Versand, Browserdarstellung und die Wirkung auf die Antwortquote. Eine nach bereits versendeter Ersteller-Stufe verlängerte Frist löst keine neue Warnung aus."
+        "Nicht geprüft: echter Cron-Lauf, Push-Versand, Browserdarstellung und die Wirkung auf die Antwortquote. Eine nach bereits versendeter Ersteller-Stufe verlängerte Frist löst keine neue Warnung aus. Offene Rückfragen erscheinen nur in Entscheidungen mit gesetzter Antwortfrist."
       ]
     },
     {

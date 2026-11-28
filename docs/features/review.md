@@ -503,7 +503,7 @@ Eindeutige Fehler werden im CI-Lauf ausgegeben und brechen die Prüfung ab; sie 
 
 ### `decisions.creator-deadline-warnings`
 
-- Nicht geprüft: echter Cron-Lauf, Push-Versand, Browserdarstellung und die Wirkung auf die Antwortquote. Eine nach bereits versendeter Ersteller-Stufe verlängerte Frist löst keine neue Warnung aus.
+- Nicht geprüft: echter Cron-Lauf, Push-Versand, Browserdarstellung und die Wirkung auf die Antwortquote. Eine nach bereits versendeter Ersteller-Stufe verlängerte Frist löst keine neue Warnung aus. Offene Rückfragen erscheinen nur in Entscheidungen mit gesetzter Antwortfrist.
 
 ### `decisions.digest-items`
 

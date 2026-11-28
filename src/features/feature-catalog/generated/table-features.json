@@ -3707,6 +3707,11 @@
       "area": "entscheidungen"
     },
     {
+      "id": "decisions.daily-digest",
+      "name": "Optionaler Tagesüberblick",
+      "area": "entscheidungen"
+    },
+    {
       "id": "decisions.matrix",
       "name": "Entscheidungen über Matrix beantworten",
       "area": "entscheidungen"

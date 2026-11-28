@@ -21,14 +21,29 @@ Der Ersteller erhält zusätzlich:
 
 | Stufe | Bedingung | Priorität |
 |---|---|---|
-| `creator_24h` | Frist endet innerhalb von 24 Stunden, mindestens eine Hauptantwort fehlt | medium |
-| `creator_overdue` | Frist ist überschritten, mindestens eine Hauptantwort fehlt | high |
+| `creator_24h` | Frist endet innerhalb von 24 Stunden, Antworten fehlen oder Rückfragen sind offen | medium |
+| `creator_overdue` | Frist ist überschritten, Antworten fehlen oder Rückfragen sind offen | high |
 
 Die Warnung nennt die aktuelle Zahl der Teilnehmenden ohne Hauptantwort, zum Beispiel
 „Noch 2 Antworten fehlen“. Gezählt werden alle Teilnehmenden außer dem Ersteller; eine
-spätere Antwortänderung ersetzt die frühere Hauptantwort. Sind alle Antworten
-eingegangen, entfällt die Warnung. `creator_overdue` wird genau einmal versendet, auch
-wenn die Entscheidung danach offen bleibt.
+spätere Antwortänderung ersetzt die frühere Hauptantwort. `creator_overdue` wird genau
+einmal versendet, auch wenn die Entscheidung danach offen bleibt.
+
+## Offene Rückfragen
+
+Zusätzlich nennt die Ersteller-Warnung die offenen Rückfragen samt Alter der ältesten,
+zum Beispiel „2 offene Rückfragen (älteste seit 3 Tagen)“. Offen ist eine Rückfrage,
+solange die letzte Hauptantwort der Person `question` ist und der Ersteller sie nicht
+beantwortet hat (`creator_response` leer) – dieselbe Bedingung, die das automatische
+Archivieren blockiert. Der Text bittet ausdrücklich um Antwort („bitte beantworte
+sie“).
+
+Dadurch bleibt die Warnung auch dann bestehen, wenn alle Teilnehmenden geantwortet
+haben, aber noch eine Rückfrage unbeantwortet ist. Sind alle Antworten da und keine
+Rückfrage offen, entfällt sie vollständig. Anzahl, Zeitpunkt und Alter stehen als
+`open_question_count`, `oldest_question_at`, `oldest_question_age_hours` und
+`oldest_question_age_label` im `data`-Feld; die Statistik liefert
+`decision_open_question_stats`, die Altersformulierung `decision_question_age_label`.
 
 Die Warnung nutzt den Meldungstyp `task_decision_deadline_reminder` mit
 `creator_warning=true` und `missing_count` im `data`-Feld. Die Oberfläche bietet dafür
@@ -53,9 +68,11 @@ Deduplizierung beim zweiten Lauf, Aussetzen während 22:00–08:00 und den Versa
 Ende der Ruhezeit. Der Szenario-Schritt heißt `deadline-reminders`.
 
 `decision_creator_deadline_warning_selftest` prüft die Ersteller-Warnung vor Ablauf,
-die einmalige Überfälligkeitswarnung mit neu berechneter Zahl sowie das Ausbleiben der
-Warnung, wenn alle Antworten vorliegen. Der Szenario-Schritt heißt
-`creator-deadline-warnings`.
+die einmalige Überfälligkeitswarnung mit neu berechneter Zahl, die offene Rückfrage mit
+Anzahl und Alter („seit 3 Tagen“) samt Antwortbitte, den Wegfall nach beantworteter
+Rückfrage, die Warnung bei vollständig beantworteter Entscheidung mit weiterhin offener
+Rückfrage sowie das Ausbleiben der Warnung, wenn alle Antworten vorliegen und keine
+Rückfrage offen ist. Der Szenario-Schritt heißt `creator-deadline-warnings`.
 
 Nicht geprüft: echter Cron-Lauf, Push-Versand, Browserdarstellung und die Wirkung auf
 die Antwortquote.
