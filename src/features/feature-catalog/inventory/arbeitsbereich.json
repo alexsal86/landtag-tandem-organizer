@@ -332,7 +332,7 @@
       "id": "search.global",
       "subarea": "Suche",
       "name": "Globale Suche und Befehlspalette",
-      "description": "Durchsucht Kontakte, Aufgaben, Dokumente und weitere Objekte über eine Befehlspalette und protokolliert Suchanfragen für die Auswertung.",
+      "description": "Durchsucht Kontakte, Aufgaben, Dokumente und weitere Objekte über eine Befehlspalette, öffnet Treffer über eine zentrale Ziel-Registry und protokolliert Suchanfragen für die Auswertung.",
       "category": "fachlich",
       "implementationStatus": "implementiert",
       "integrationStatus": "ui",
@@ -340,14 +340,16 @@
       "testResult": "nicht-ausgefuehrt",
       "evidence": [
         "src/components/search/GlobalSearchCommand.tsx",
-        "src/components/search/postgrestSearch.ts"
+        "src/components/search/postgrestSearch.ts",
+        "src/lib/appTargets.ts"
       ],
       "components": [
         "src/components/search/GlobalSearchCommand.tsx",
         "src/components/search/GlobalQuickNoteDialog.tsx"
       ],
       "services": [
-        "src/components/search/postgrestSearch.ts"
+        "src/components/search/postgrestSearch.ts",
+        "src/lib/appTargets.ts"
       ],
       "tables": [
         "search_analytics"
@@ -358,8 +360,14 @@
         "mitarbeiter",
         "praktikant"
       ],
+      "limitations": [
+        "Die Suche bleibt ein PostgREST-Fan-out je Entität: kein serverseitiges Ranking, keine Tippfehler-Toleranz und keine Volltextsuche über Dokument- oder Briefinhalte.",
+        "Fehlgeschlagene Quellen werden sichtbar gemeldet und können erneut geladen werden; die übrigen Bereiche bleiben nutzbar."
+      ],
       "reviewPoints": [
-        "Die Suche nutzt PostgREST-Abfragen je Entität; eine vollständige Liste der durchsuchten Tabellen ist nicht zentral deklariert."
+        "Die Suche nutzt PostgREST-Abfragen je Entität; eine vollständige Liste der durchsuchten Tabellen ist nicht zentral deklariert.",
+        "Sprungziele sind zentral in appTargets.ts hinterlegt; neue Trefferarten und Quick-Access-Ziele müssen dort ergänzt werden.",
+        "Kategorie- und Statusfilter gelten nur im gewählten Bereich, weil die Wertelisten je Bereich unterschiedlich sind."
       ]
     },
     {

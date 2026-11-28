@@ -4,6 +4,7 @@ import { formatDistanceToNow, format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { buildDeepLinkPath } from '@/utils/notificationDeepLinks';
+import { buildAdminHref } from '@/lib/appTargets';
 import {
   Bell, CheckCheck, Calendar, MessageSquare, FileText, Users,
   BookOpen, Clock, BarChart3, MapPin, StickyNote, Tag, Settings,
@@ -560,7 +561,7 @@ export function NotificationsPage(): JSX.Element {
                                   className="text-xs text-muted-foreground underline hover:text-primary text-left"
                                   onClick={(event: MouseEvent<HTMLButtonElement>): void => {
                                     event.stopPropagation();
-                                    navigate(`/admin?tab=automation&highlight=${notificationData.run_id || notificationData.rule_id}`);
+                                    navigate(buildAdminHref("automation", "rules"));
                                   }}
                                 >
                                   Warum diese Benachrichtigung?
